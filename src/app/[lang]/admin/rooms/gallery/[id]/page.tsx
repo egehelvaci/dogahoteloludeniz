@@ -17,9 +17,9 @@ interface AdminRoomGalleryPageProps {
 }
 
 export default function AdminRoomGalleryPage({ params }: AdminRoomGalleryPageProps) {
-  const resolvedParams = React.use(params);
-  const lang = resolvedParams.lang;
-  const id = resolvedParams.id;
+  // Geçici çözüm: params'ı doğrudan kullan
+  const lang = params.lang;
+  const id = params.id;
   
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,20 +165,44 @@ export default function AdminRoomGalleryPage({ params }: AdminRoomGalleryPagePro
     setIsSaving(true);
     
     try {
+      // En az bir görsel var mı kontrolü
+      if (gallery.length === 0) {
+        toast.error(lang === 'tr' ? 'En az bir görsel eklemeniz gerekiyor!' : 'You need to add at least one image!');
+        return;
+      }
+      
+      // Ana görsel seçili mi kontrolü
+      if (!mainImage && gallery.length > 0) {
+        // Otomatik olarak ilk görseli ana görsel yap
+        setMainImage(gallery[0]);
+        toast.success(lang === 'tr' ? 'İlk görsel otomatik olarak ana görsel seçildi' : 'First image was automatically selected as main image');
+      }
+      
+      console.log('Galeri güncelleniyor...', { mainImage, galleryCount: gallery.length });
+      
       const result = await updateRoomGallery(id, {
         image: mainImage,
         gallery: gallery
+      }).catch(error => {
+        console.error('Galeri güncelleme hatası yakalandı:', error);
+        throw new Error(error.message || 'Galeri güncellenemedi');
       });
       
       if (result) {
         toast.success(lang === 'tr' ? 'Galeri başarıyla güncellendi!' : 'Gallery updated successfully!');
-        router.push(`/${lang}/admin/rooms/edit/${id}`);
+        
+        // 1 saniye bekleyip yönlendir
+        setTimeout(() => {
+          router.push(`/${lang}/admin/rooms/edit/${id}`);
+        }, 1000);
       } else {
         throw new Error('Galeri güncellenemedi');
       }
     } catch (error) {
-      console.error('Galeri güncelleme hatası:', error);
-      toast.error(lang === 'tr' ? 'Galeri güncellenirken bir hata oluştu!' : 'An error occurred while updating the gallery!');
+      console.error('Galeri güncelleme işlemi hatası:', error);
+      toast.error(lang === 'tr' 
+        ? `Galeri güncellenirken bir hata oluştu: ${error.message || 'Bilinmeyen hata'}` 
+        : `An error occurred while updating the gallery: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }

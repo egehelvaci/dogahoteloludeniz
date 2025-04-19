@@ -134,8 +134,7 @@ export async function PUT(
       
       // Yeni galeri öğelerini ekle
       for (let i = 0; i < galleryUrls.length; i++) {
-        // UUID oluştur - NOT NULL constraint için
-        const galleryItemId = randomUUID();
+        const galleryItemId = randomUUID(); // Her galeri öğesi için benzersiz UUID
         
         const insertGalleryQuery = `
           INSERT INTO room_gallery (id, room_id, image_url, order_number)
@@ -173,6 +172,7 @@ export async function PUT(
     } catch (error) {
       // Hata durumunda rollback yap
       await client.query('ROLLBACK');
+      console.error('Transaction hatası:', error);
       throw error;
     } finally {
       client.release();
@@ -242,34 +242,29 @@ export async function POST(
     const countResult = await executeQuery(countQuery, [id]);
     const orderNumber = parseInt(countResult.rows[0].count) + 1;
     
-    // Görseli galeriye ekle
+    // Görseli galeriye ekle - UUID ile
+    const galleryItemId = randomUUID(); // Benzersiz UUID
+    
     const insertQuery = `
-      INSERT INTO room_gallery (room_id, image_url, order_number)
-      VALUES ($1, $2, $3)
+      INSERT INTO room_gallery (id, room_id, image_url, order_number)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
     
-    await executeQuery(insertQuery, [id, imagePath, orderNumber]);
+    const insertResult = await executeQuery(insertQuery, [
+      galleryItemId, 
+      id, 
+      imagePath, 
+      orderNumber
+    ]);
     
     // WebSocket bildirimi gönder
     notifyRoomsUpdated();
     notifyGalleryUpdated();
     
-    // Güncellenmiş galeriyi getir
-    const updatedQuery = `
-      SELECT * FROM room_gallery
-      WHERE room_id = $1
-      ORDER BY order_number ASC
-    `;
-    
-    const updatedGallery = await executeQuery(updatedQuery, [id]);
-    
     return NextResponse.json({
       success: true,
-      data: {
-        mainImage: roomResult.rows[0].main_image_url,
-        gallery: updatedGallery.rows.map(item => item.image_url)
-      },
+      data: insertResult.rows[0],
       message: 'Görsel galeriye eklendi'
     });
   } catch (error) {
@@ -288,10 +283,8 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    
-    // URL parametrelerini al
-    const { searchParams } = new URL(request.url);
-    const imagePath = searchParams.get('imagePath');
+    const url = new URL(request.url);
+    const imagePath = url.searchParams.get('imagePath');
     
     if (!imagePath) {
       return NextResponse.json(
@@ -299,7 +292,7 @@ export async function DELETE(
         { status: 400 }
       );
     }
-
+    
     // Odanın var olup olmadığını kontrol et
     const roomQuery = `
       SELECT * FROM rooms 
@@ -315,86 +308,47 @@ export async function DELETE(
       );
     }
     
-    // Ana görsel silinmeye çalışılıyorsa engelle
-    if (roomResult.rows[0].main_image_url === imagePath) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Ana görsel kaldırılamaz. Önce başka bir görseli ana görsel yapın'
-        },
-        { status: 400 }
-      );
-    }
+    // Görseli sil
+    const deleteQuery = `
+      DELETE FROM room_gallery
+      WHERE room_id = $1 AND image_url = $2
+      RETURNING *
+    `;
     
-    // İşlemler için transaction başlat
-    const client = await (await executeQuery('BEGIN')).client;
+    const deleteResult = await executeQuery(deleteQuery, [id, imagePath]);
     
-    try {
-      // Görseli galeriden sil
-      const deleteQuery = `
-        DELETE FROM room_gallery
-        WHERE room_id = $1 AND image_url = $2
-        RETURNING *
-      `;
-      
-      const deleteResult = await client.query(deleteQuery, [id, imagePath]);
-      
-      if (deleteResult.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return NextResponse.json(
-          { success: false, message: 'Görsel galeride bulunamadı' },
-          { status: 404 }
-        );
-      }
-      
-      // Sıra numaralarını yeniden düzenle
-      const reorderQuery = `
-        WITH ranked AS (
-          SELECT id, ROW_NUMBER() OVER (ORDER BY order_number) as new_order
-          FROM room_gallery
-          WHERE room_id = $1
-        )
-        UPDATE room_gallery
-        SET order_number = ranked.new_order
-        FROM ranked
-        WHERE room_gallery.id = ranked.id
-      `;
-      
-      await client.query(reorderQuery, [id]);
-      
-      // Transaction'ı tamamla
-      await client.query('COMMIT');
-      
-      // WebSocket bildirimi gönder
-      notifyRoomsUpdated();
-      notifyGalleryUpdated();
-      
-      // Güncellenmiş galeriyi getir
-      const updatedQuery = `
-        SELECT * FROM room_gallery
-        WHERE room_id = $1
-        ORDER BY order_number ASC
-      `;
-      
-      const updatedGallery = await executeQuery(updatedQuery, [id]);
-      
+    if (deleteResult.rows.length === 0) {
       return NextResponse.json({
-        success: true,
-        data: {
-          mainImage: roomResult.rows[0].main_image_url,
-          gallery: updatedGallery.rows.map(item => item.image_url)
-        },
-        message: 'Görsel galeriden kaldırıldı'
+        success: false,
+        message: 'Görsel bulunamadı'
       });
-    } catch (error) {
-      // Hata durumunda rollback yap
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
     }
+    
+    // Kalan görsellerin sıra numaralarını yeniden düzenle
+    const reorderQuery = `
+      WITH numbered AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY order_number) as new_order
+        FROM room_gallery
+        WHERE room_id = $1
+      )
+      UPDATE room_gallery g
+      SET order_number = n.new_order
+      FROM numbered n
+      WHERE g.id = n.id AND g.room_id = $1
+    `;
+    
+    await executeQuery(reorderQuery, [id]);
+    
+    // WebSocket bildirimi gönder
+    notifyRoomsUpdated();
+    notifyGalleryUpdated();
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Görsel galeriden kaldırıldı'
+    });
   } catch (error) {
-    console.error('Görsel kaldırma hatası:', error);
+    console.error('Görsel silme hatası:', error);
     return NextResponse.json(
       { success: false, message: 'Görsel kaldırılırken bir hata oluştu' },
       { status: 500 }

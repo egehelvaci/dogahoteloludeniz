@@ -586,42 +586,50 @@ export async function updateRoomGallery(id: string, galleryData: { image: string
       galleryCount: galleryData.gallery.length
     });
     
-    // UUID ile galeri öğelerini formatlama
-    const formattedGallery = galleryData.gallery.map(imageUrl => ({
-      id: uuidv4(), // Her galeri öğesi için benzersiz ID
-      imageUrl
-    }));
+    // API'nin beklediği formatta veriyi hazırla
+    const requestData = {
+      mainImageUrl: galleryData.image,
+      gallery: galleryData.gallery // API dizeyi doğrudan kontrol edip işleyebilecek şekilde düzenlendi
+    };
+    
+    console.log('API\'ye gönderilecek veri:', JSON.stringify(requestData));
     
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/rooms/gallery/${id}`, {
+    
+    // API isteği yapılandırması
+    const options = {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify({
-        mainImageUrl: galleryData.image,
-        gallery: formattedGallery // Formatlı galeri gönder
-      })
-    });
+      body: JSON.stringify(requestData)
+    };
     
+    console.log(`Galeri güncelleme API isteği: ${baseUrl}/api/rooms/gallery/${id}`);
+    
+    const response = await fetch(`${baseUrl}/api/rooms/gallery/${id}`, options);
+    
+    // Yanıt verilerini ayrıştır
     const responseData = await response.json();
-    console.log('Galeri güncelleme yanıtı:', responseData);
+    console.log('Galeri güncelleme yanıtı:', response.status, responseData);
     
     if (!response.ok) {
       console.error('API hatası:', response.status, responseData);
-      throw new Error(`Galeri güncellenemedi: ${id} - Hata: ${response.status} ${responseData.message || 'Bilinmeyen hata'}`);
+      throw new Error(`Galeri güncellenemedi: ${id} - Hata: ${response.status} ${responseData.message || 'Galeri güncellenirken bir hata oluştu'}`);
     }
     
     if (responseData.success) {
       // Önbelleği temizle
       clearCache();
+      console.log('Galeri başarıyla güncellendi');
       return true;
     } else {
-      console.error('API hatası:', responseData.message);
+      console.error('API başarısız yanıt döndü:', responseData.message);
       return false;
     }
   } catch (error) {
     console.error('Galeri güncelleme hatası:', error);
-    return false;
+    throw error; // Hata durumunda hatayı yukarı ileti
   }
 }
