@@ -23,20 +23,19 @@ const roomsEN: Room[] = [];
 export async function getRoomsForLanguage(lang: string): Promise<any[]> {
   const timestamp = Date.now(); // Önbellek sorunlarını önlemek için timestamp
   const baseUrl = getBaseUrl();
-  const url = `${baseUrl}/api/rooms?lang=${lang}&timestamp=${timestamp}`;
+  const url = `${baseUrl}/api/public-rooms?lang=${lang}&timestamp=${timestamp}`;
 
   console.log(`[getRoomsForLanguage] API isteği yapılıyor: ${url}`);
 
   try {
-    // Fetch options ile cache kontrolü ve auth bypass
+    // Fetch options ile cache kontrolü
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0',
-        'x-skip-auth': 'true' // Vercel authentication'ı bypass etmek için
+        'Expires': '0'
       },
       next: { revalidate: 0 }, // Önbelleği devre dışı bırak
     });
@@ -128,7 +127,7 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
       const baseUrl = getBaseUrl();
       
       // API URL'yi oluştur ve tüm parametreleri ekle  
-      const url = `${baseUrl}/api/rooms/${mappedId}?lang=${lang}&t=${timestamp}`;
+      const url = `${baseUrl}/api/public-rooms/${mappedId}?lang=${lang}&t=${timestamp}`;
       console.log('[getRoomById] API URL:', url);
       
       // Direkt API'den veriyi almaya çalış
@@ -138,8 +137,7 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'x-skip-auth': 'true' // Vercel authentication'ı bypass etmek için
+          'Expires': '0'
         },
         cache: 'no-store',
         next: { revalidate: 0 }

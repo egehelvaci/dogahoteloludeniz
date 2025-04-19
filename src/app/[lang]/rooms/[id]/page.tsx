@@ -127,7 +127,7 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
       try {
         const baseUrl = getBaseUrl();
         const timestamp = Date.now();
-        const apiUrl = `${baseUrl}/api/rooms/${roomId}?lang=${lang}&t=${timestamp}`;
+        const apiUrl = `${baseUrl}/api/public-rooms/${roomId}?lang=${lang}&t=${timestamp}`;
         console.log('[RoomDetailPage] API URL:', apiUrl);
         
         const response = await fetch(apiUrl, {
@@ -410,4 +410,4 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
       </div>
     );
   }
-} 
+}
