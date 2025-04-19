@@ -42,6 +42,15 @@ const nextConfig: NextConfig = {
     optimizeCss: false,
     optimizeServerReact: false
   },
+  // Statik dosya şablonları - image, font, icon gibi kaynaklara doğrudan erişim için
+  async rewrites() {
+    return [
+      {
+        source: '/images/:path*',
+        destination: '/public/images/:path*'
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -39,6 +39,12 @@ export async function getRoomsForLanguage(lang: string): Promise<Room[]> {
 // Belirli bir odayı ID'ye göre getiren asenkron fonksiyon
 export async function getRoomById(lang: string, id: string): Promise<Room | undefined> {
   try {
+    // Geçersiz ID kontrolü
+    if (!id || id.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) {
+      console.error(`Geçersiz oda ID'si veya görsel formatı algılandı: ${id}`);
+      return undefined;
+    }
+    
     // İthal etmeyi unutmayalım
     const { mapRoomId } = require('./idMapper');
     

@@ -26,6 +26,33 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
     const lang = resolvedParams.lang;
     const originalId = decodeURIComponent(resolvedParams.id);
     
+    // Hatalı yönlendirmeyi önlemek için basit kontrol
+    // Eğer ID, bir görsel dosyasına veya statik dosyaya benzer formattaysa erken dön
+    if (originalId.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) {
+      console.error(`Geçersiz oda ID formatı tespit edildi (dosya uzantısı içeriyor): ${originalId}`);
+      return (
+        <div className="pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
+          <div className="text-center max-w-4xl mx-auto px-4">
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">
+              {lang === 'tr' ? 'Geçersiz Oda ID' : 'Invalid Room ID'}
+            </h1>
+            <p className="text-gray-600 mb-8">
+              {lang === 'tr' 
+                ? 'Aradığınız oda ID formatı geçersiz. Lütfen oda listesinden geçerli bir oda seçin.' 
+                : 'The room ID format you are looking for is invalid. Please select a valid room from the room list.'}
+            </p>
+            <Link 
+              href={`/${lang}/rooms`}
+              className="inline-flex items-center bg-teal-600 hover:bg-teal-700 text-white py-2 px-5 rounded transition-colors duration-300"
+            >
+              <FaArrowLeft className="mr-2" />
+              {lang === 'tr' ? 'Odalar Sayfasına Dön' : 'Back to Rooms'}
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    
     // ID eşleme sistemini kullanarak eski ID'leri yeni UUID'lere dönüştür
     const id = mapRoomId(originalId);
     
