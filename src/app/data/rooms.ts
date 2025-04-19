@@ -20,7 +20,7 @@ const roomsTR: Room[] = [
     id: 'standard-room',
     name: 'Standart Oda',
     description: '26 m² olup, çift kişilik yatak mevcuttur. Konforlu bir konaklama deneyimi için tüm ihtiyaçlarınızı karşılayacak donanıma sahiptir.',
-    image: '/images/rooms/standart/standard-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room.jpg',
     price: '₺1.500',
     capacity: 2,
     size: 26,
@@ -33,20 +33,20 @@ const roomsTR: Room[] = [
       'Dağ yada Havuz Manzarası'
     ],
     gallery: [
-      '/images/rooms/standart/standard-room.jpg',
-      '/images/rooms/standart/standard-room2.jpg',
-      '/images/rooms/standart/standard-room3.jpg',
-      '/images/rooms/standart/standard-room4.jpg',
-      '/images/rooms/standart/standard-room5.jpg',
-      '/images/rooms/standart/standard-room6.jpg',
-      '/images/rooms/standart/standard-room7.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room6.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room7.jpg'
     ]
   },
   {
     id: 'triple-room',
     name: 'Üç Kişilik Oda',
     description: '26 m² olup, 1 adet çift kişilik ve 1 adet tek kişilik yatak mevcuttur. Aileler için ideal bir konaklama seçeneğidir.',
-    image: '/images/rooms/triple/triple-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room.jpg',
     price: '₺2.500',
     capacity: 3,
     size: 26,
@@ -59,19 +59,19 @@ const roomsTR: Room[] = [
       'Dağ yada Havuz Manzarası'
     ],
     gallery: [
-      '/images/rooms/triple/triple-room.jpg',
-      '/images/rooms/triple/triple-room1.jpg',
-      '/images/rooms/triple/triple-room3.jpg',
-      '/images/rooms/triple/triple-room4.jpg',
-      '/images/rooms/triple/triple-room5.jpg',
-      '/images/rooms/triple/triple-room6.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room1.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room6.jpg'
     ]
   },
   {
     id: 'suite-room',
     name: 'Süit Oda',
     description: '40 m² olup, 1 adet çift kişilik yatak ve 3 adet tek kişilik yatak mevcuttur. Tek duşlu olup seramik zeminden oluşmaktadır.',
-    image: '/images/rooms/suite/suite-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room.jpg',
     price: '₺3.500',
     capacity: 5,
     size: 40,
@@ -86,21 +86,21 @@ const roomsTR: Room[] = [
       'Dağ yada Havuz Manzarası'
     ],
     gallery: [
-      '/images/rooms/suite/suite-room.jpg',
-      '/images/rooms/suite/suite-room2.jpg',
-      '/images/rooms/suite/suite-room3.jpg',
-      '/images/rooms/suite/suite-room4.jpg',
-      '/images/rooms/suite/suite-room5.jpg',
-      '/images/rooms/suite/suite-room6.jpg',
-      '/images/rooms/suite/suite-room7.jpg',
-      '/images/rooms/suite/suite-room8.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room6.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room7.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room8.jpg'
     ]
   },
   {
     id: 'apart-room',
     name: 'Apart Oda',
     description: '30 m² olup, tek duşlu olup seramik zeminden oluşmaktadır. Konforlu bir konaklama için tüm ihtiyaçlarınızı karşılar.',
-    image: '/images/rooms/apart/apart-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room.jpg',
     price: '₺2.000',
     capacity: 2,
     size: 30,
@@ -113,12 +113,12 @@ const roomsTR: Room[] = [
       'Dağ yada Havuz Manzarası'
     ],
     gallery: [
-      '/images/rooms/apart/apart-room.jpg',
-      '/images/rooms/apart/apart-room2.jpg',
-      '/images/rooms/apart/apart-room3.jpg',
-      '/images/rooms/apart/apart-room4.jpg',
-      '/images/rooms/apart/apart-room5.jpg',
-      '/images/rooms/apart/apart-room6.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room6.jpg'
     ]
   }
 ];
@@ -129,7 +129,7 @@ const roomsEN: Room[] = [
     id: 'standard-room',
     name: 'Standard Room',
     description: '26 m² with a double bed. Equipped with all the amenities for a comfortable stay.',
-    image: '/images/rooms/standart/standard-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room.jpg',
     price: '€80',
     capacity: 2,
     size: 26,
@@ -142,20 +142,20 @@ const roomsEN: Room[] = [
       'Mountain or Pool View'
     ],
     gallery: [
-      '/images/rooms/standart/standard-room.jpg',
-      '/images/rooms/standart/standard-room2.jpg',
-      '/images/rooms/standart/standard-room3.jpg',
-      '/images/rooms/standart/standard-room4.jpg',
-      '/images/rooms/standart/standard-room5.jpg',
-      '/images/rooms/standart/standard-room6.jpg',
-      '/images/rooms/standart/standard-room7.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room6.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/standard-room7.jpg'
     ]
   },
   {
     id: 'triple-room',
     name: 'Triple Room',
     description: '26 m² with 1 double bed and 1 single bed. An ideal accommodation option for families.',
-    image: '/images/rooms/triple/triple-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room.jpg',
     price: '€120',
     capacity: 3,
     size: 26,
@@ -168,19 +168,19 @@ const roomsEN: Room[] = [
       'Mountain or Pool View'
     ],
     gallery: [
-      '/images/rooms/triple/triple-room.jpg',
-      '/images/rooms/triple/triple-room1.jpg',
-      '/images/rooms/triple/triple-room3.jpg',
-      '/images/rooms/triple/triple-room4.jpg',
-      '/images/rooms/triple/triple-room5.jpg',
-      '/images/rooms/triple/triple-room6.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room1.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/triple-room6.jpg'
     ]
   },
   {
     id: 'suite-room',
     name: 'Suite Room',
     description: '40 m² with 1 double bed and 3 single beds. Features a single shower and ceramic floor.',
-    image: '/images/rooms/suite/suite-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room.jpg',
     price: '€180',
     capacity: 5,
     size: 40,
@@ -195,21 +195,21 @@ const roomsEN: Room[] = [
       'Mountain or Pool View'
     ],
     gallery: [
-      '/images/rooms/suite/suite-room.jpg',
-      '/images/rooms/suite/suite-room2.jpg',
-      '/images/rooms/suite/suite-room3.jpg',
-      '/images/rooms/suite/suite-room4.jpg',
-      '/images/rooms/suite/suite-room5.jpg',
-      '/images/rooms/suite/suite-room6.jpg',
-      '/images/rooms/suite/suite-room7.jpg',
-      '/images/rooms/suite/suite-room8.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room6.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room7.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/suite-room8.jpg'
     ]
   },
   {
     id: 'apart-room',
     name: 'Apart Room',
     description: '30 m² with a single shower and ceramic floor. Meets all your needs for a comfortable stay.',
-    image: '/images/rooms/apart/apart-room.jpg',
+    image: 'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room.jpg',
     price: '€100',
     capacity: 2,
     size: 30,
@@ -222,12 +222,12 @@ const roomsEN: Room[] = [
       'Mountain or Pool View'
     ],
     gallery: [
-      '/images/rooms/apart/apart-room.jpg',
-      '/images/rooms/apart/apart-room2.jpg',
-      '/images/rooms/apart/apart-room3.jpg',
-      '/images/rooms/apart/apart-room4.jpg',
-      '/images/rooms/apart/apart-room5.jpg',
-      '/images/rooms/apart/apart-room6.jpg'
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room2.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room3.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room4.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room5.jpg',
+      'https://s3.tebi.io/dogahotelfethiye/uploads/rooms/apart-room6.jpg'
     ]
   }
 ];
