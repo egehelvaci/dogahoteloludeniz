@@ -21,7 +21,6 @@ import { motion } from 'framer-motion';
 import HeroSlider from '../components/HeroSlider';
 import ScrollAnimationWrapper from '../components/ScrollAnimationWrapper';
 import { AnimatedCounter, AnimatedText } from '../../components/micro-interactions/MicroInteractions';
-import { getRoomsForLanguage } from '../data/rooms';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
 type HomePageProps = {
@@ -219,14 +218,15 @@ export default function HomePage({ lang }: HomePageProps) {
       try {
         // No-store ile veri çekme, API önbelleğini bypass etmek için
         const fetchUrl = typeof window !== 'undefined' 
-          ? `${window.location.origin}/api/rooms?t=${Date.now()}` 
+          ? `${window.location.origin}/api/rooms?lang=${language}&t=${Date.now()}` 
           : 'http://localhost:3000/api/rooms';
           
         const response = await fetch(fetchUrl, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Pragma': 'no-cache',
+            'Accept-Language': language
           }
         });
         
@@ -234,58 +234,19 @@ export default function HomePage({ lang }: HomePageProps) {
           throw new Error('Oda verileri alınamadı');
         }
         
-        const data = await response.json();
-        let rooms;
+        const rooms = await response.json();
         
-        if (data.success) {
-          // API'den alınan ham verileri dile göre işle
-          rooms = data.data
-            .filter((room: any) => room.active)
-            .map((room: any) => ({
-              id: room.id,
-              name: language === 'tr' ? room.nameTR : room.nameEN,
-              description: language === 'tr' ? room.descriptionTR : room.descriptionEN,
-              image: room.image,
-              mainImageUrl: room.mainImageUrl || room.image,
-              price: language === 'tr' ? room.priceTR : room.priceEN,
-              capacity: room.capacity,
-              size: room.size,
-              features: language === 'tr' ? room.featuresTR : room.featuresEN,
-              gallery: room.gallery,
-              type: room.type
-            }));
-        } else {
-          // API hatası durumunda varsayılan fonksiyonu kullan
-          rooms = await getRoomsForLanguage(language);
-        }
-        
-        if (Array.isArray(rooms) && rooms.length > 0) {
-          console.log('Oda ID\'leri:', rooms.map(room => room.id));
-          
-          // Her bir odanın detaylarını kontrol et
-          rooms.forEach((room, index) => {
-            console.log(`Oda ${index + 1} detayları:`, {
-              id: room.id,
-              name: room.name,
-              image: room.image?.substring(0, 30) + '...'
-            });
-          });
-          
+        // API'den dönen veriler zaten dile göre işlenmiş durumda
+        if (Array.isArray(rooms)) {
           setLoadedRooms(rooms);
         } else {
-          console.warn('Yüklenen oda verisi boş veya geçersiz:', rooms);
+          console.error('API beklenmeyen yanıt formatı:', rooms);
+          setLoadedRooms([]);
         }
+        
       } catch (error) {
-        console.error('Oda yüklenirken hata oluştu:', error);
-        // Hata durumunda yine normal fonksiyonu dene
-        try {
-          const rooms = await getRoomsForLanguage(language);
-          if (Array.isArray(rooms) && rooms.length > 0) {
-            setLoadedRooms(rooms);
-          }
-        } catch (fallbackError) {
-          console.error('Yedek oda yükleme işlemi de başarısız oldu:', fallbackError);
-        }
+        console.error('Oda verileri yüklenirken hata:', error);
+        setLoadedRooms([]);
       }
     };
     
