@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated, notifyGalleryUpdated } from '../../../websocket/route';
+import { generateUUID } from '../../../../../lib/utils';
 
 // Prisma istemcisi oluşturalım
 const prisma = new PrismaClient();
@@ -123,7 +124,7 @@ export async function PUT(
       // Yeni galeri öğelerini ekle
       if (galleryUrls.length > 0) {
         const galleryItems = galleryUrls.map((url, index) => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           roomId: id,
           imageUrl: url,
           orderNumber: index + 1
@@ -221,7 +222,7 @@ export async function POST(
     // Görseli galeriye ekle
     const newGalleryItem = await prisma.roomGallery.create({
       data: {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         roomId: id,
         imageUrl: imagePath,
         orderNumber: galleryCount + 1
