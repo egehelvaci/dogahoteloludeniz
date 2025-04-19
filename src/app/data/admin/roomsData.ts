@@ -353,9 +353,22 @@ export async function getSiteRoomById(lang: string, id: string): Promise<SiteRoo
 
 // Baz URL alma fonksiyonu
 const getBaseUrl = (): string => {
-  return typeof window !== 'undefined'
-    ? window.location.origin
-    : 'http://localhost:3000';
+  if (typeof window !== 'undefined') {
+    // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
+    return window.location.origin;
+  } else {
+    // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
+    if (process.env.VERCEL_URL) {
+      // Vercel ortamında çalışıyoruz
+      return `https://${process.env.VERCEL_URL}`;
+    } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+      // Özel olarak tanımlanmış site URL'si varsa kullanalım
+      return process.env.NEXT_PUBLIC_SITE_URL;
+    } else {
+      // Hala development ortamındayız
+      return 'http://localhost:3000';
+    }
+  }
 };
 
 // Yeni oda ekleme

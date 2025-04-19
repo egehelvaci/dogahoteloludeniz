@@ -103,11 +103,31 @@ const initialServiceData: ServiceItem[] = [
   }
 ];
 
+// Baz URL alma fonksiyonu
+const getBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
+    return window.location.origin;
+  } else {
+    // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
+    if (process.env.VERCEL_URL) {
+      // Vercel ortamında çalışıyoruz
+      return `https://${process.env.VERCEL_URL}`;
+    } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+      // Özel olarak tanımlanmış site URL'si varsa kullanalım
+      return process.env.NEXT_PUBLIC_SITE_URL;
+    } else {
+      // Hala development ortamındayız
+      return 'http://localhost:3000';
+    }
+  }
+};
+
 // API'den servisleri çekme temel fonksiyonu - önbelleklemeyi engellemek için
 async function fetchServicesData(): Promise<ServiceItem[]> {
   const timestamp = Date.now(); // Önbelleği kırmak için zaman damgası
   try {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/admin/services?t=${timestamp}`, {
       method: 'GET',
       headers: {
@@ -153,7 +173,7 @@ export async function getServicesData(lang: string): Promise<SiteService[]> {
   try {
     // Doğrudan public API'den veri çek
     const timestamp = Date.now();
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/services?t=${timestamp}`, {
       method: 'GET',
@@ -199,7 +219,7 @@ export async function getAllServicesData(): Promise<ServiceItem[]> {
   // Her zaman taze veri çek
   try {
     const timestamp = Date.now(); // Her seferinde benzersiz timestamp ile önbelleği engelle
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/admin/services?t=${timestamp}`, {
       method: 'GET',
@@ -234,7 +254,7 @@ export async function getAllServicesData(): Promise<ServiceItem[]> {
 export async function getServiceById(id: string): Promise<ServiceItem | null> {
   try {
     const timestamp = Date.now();
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/admin/services/${id}?t=${timestamp}`, {
       method: 'GET',
@@ -264,7 +284,7 @@ export async function getServiceById(id: string): Promise<ServiceItem | null> {
 export async function updateServiceItem(id: string, service: Partial<ServiceItem>): Promise<ServiceItem | null> {
   try {
     const timestamp = Date.now();
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/admin/services/${id}?t=${timestamp}`, {
       method: 'PUT',
@@ -301,7 +321,7 @@ export async function updateServiceItem(id: string, service: Partial<ServiceItem
 export async function updateServiceGallery(id: string, galleryData: { image: string, images: string[] }): Promise<boolean> {
   try {
     const timestamp = Date.now();
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/admin/services/${id}/gallery?t=${timestamp}`, {
       method: 'PUT',
@@ -333,11 +353,6 @@ export async function updateServiceGallery(id: string, galleryData: { image: str
     return false;
   }
 }
-
-// Temel URL yardımcı fonksiyonu
-const getBaseUrl = (): string => {
-  return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-};
 
 // Yeni servis ekle
 export async function addServiceItem(newItem: Omit<ServiceItem, 'id'>): Promise<ServiceItem | null> {
@@ -405,7 +420,8 @@ export async function addServiceItem(newItem: Omit<ServiceItem, 'id'>): Promise<
 // Servis sil
 export async function deleteServiceItem(id: string): Promise<boolean> {
   try {
-    const response = await fetch(`${getBaseUrl()}/api/admin/services/${id}`, {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/admin/services/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -452,9 +468,9 @@ export async function uploadServiceImage(file: File): Promise<string> {
   try {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('folder', 'services');
     
-    const response = await fetch('/api/admin/upload', {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/admin/services/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -479,26 +495,27 @@ export async function uploadServiceImage(file: File): Promise<string> {
 // Servis görseli ekle
 export async function addImageToServiceGallery(id: string, imagePath: string): Promise<boolean> {
   try {
-    // Mevcut servis detaylarını al
-    const service = await getServiceById(id);
-    if (!service) return false;
-    
-    // Görsel zaten galeride varsa ekleme
-    if (service.images.includes(imagePath)) {
-      return true;
-    }
-    
-    // Yeni görseli ekle
-    const updatedImages = [...service.images, imagePath];
-    
-    // Servisi güncelle
-    const updatedService = await updateServiceItem(id, { 
-      images: updatedImages,
-      // Ana görsel yoksa, ilk görseli ana görsel olarak ayarla
-      image: service.image || imagePath
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/admin/services/${id}/gallery`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imagePath })
     });
     
-    return updatedService !== null;
+    if (!response.ok) {
+      throw new Error('Servis galerisi güncellenirken hata oluştu');
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Servis galerisi güncellenemedi');
+    }
+    
+    clearCache(); // Önbelleği temizle
+    return true;
   } catch (error) {
     console.error('Görsel ekleme hatası:', error);
     return false;
@@ -508,27 +525,27 @@ export async function addImageToServiceGallery(id: string, imagePath: string): P
 // Servis galerisinden görsel kaldır
 export async function removeImageFromServiceGallery(id: string, imagePath: string): Promise<boolean> {
   try {
-    // Mevcut servis detaylarını al
-    const service = await getServiceById(id);
-    if (!service) return false;
-
-    // Görseli galeriden kaldır (Added string type for img)
-    const updatedImages = service.images.filter((img: string) => img !== imagePath);
-
-    // Güncelleme verisi hazırla
-    const updateData: Partial<ServiceItem> = { images: updatedImages };
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/api/admin/services/${id}/gallery?imagePath=${encodeURIComponent(imagePath)}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
     
-    // Eğer silinen görsel ana görsel ise, yeni ana görseli ayarla
-    if (service.image === imagePath && updatedImages.length > 0) {
-      updateData.image = updatedImages[0];
-    } else if (service.image === imagePath && updatedImages.length === 0) {
-      updateData.image = '';
+    if (!response.ok) {
+      throw new Error('Servis galerisi güncellenirken hata oluştu');
     }
     
-    // Servisi güncelle
-    const updatedService = await updateServiceItem(id, updateData);
+    const data = await response.json();
     
-    return updatedService !== null;
+    if (!data.success) {
+      throw new Error(data.message || 'Servis galerisi güncellenemedi');
+    }
+    
+    clearCache(); // Önbelleği temizle
+    return true;
   } catch (error) {
     console.error('Görsel kaldırma hatası:', error);
     return false;
@@ -538,15 +555,28 @@ export async function removeImageFromServiceGallery(id: string, imagePath: strin
 // Çoklu görsel yükle
 export async function uploadMultipleServiceImages(files: FileList): Promise<string[]> {
   try {
-    const uploadedImages: string[] = [];
+    const formData = new FormData();
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+    });
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const imagePath = await uploadServiceImage(file);
-      uploadedImages.push(imagePath);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/admin/services/upload/multiple`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error('Çoklu görsel yükleme hatası');
     }
     
-    return uploadedImages;
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Çoklu görsel yükleme hatası');
+    }
+    
+    return data.urls;
   } catch (error) {
     console.error('Çoklu görsel yükleme hatası:', error);
     throw error;
@@ -557,7 +587,7 @@ export async function uploadMultipleServiceImages(files: FileList): Promise<stri
 export async function reorderServices(items: {id: string, order: number}[]): Promise<boolean> {
   try {
     const timestamp = Date.now();
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/admin/services/reorder?t=${timestamp}`, {
       method: 'POST',

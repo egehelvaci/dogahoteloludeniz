@@ -51,9 +51,26 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
 
     try {
       const timestamp = Date.now(); // Cache'lemeden kaçınmak için timestamp ekle
-      const baseUrl = typeof window !== 'undefined' 
-        ? window.location.origin 
-        : 'http://localhost:3000';
+      
+      // Vercel ortamında çalışırken localhost yerine process.env.VERCEL_URL veya doğrudan kendi domain'imizi kullanalım
+      let baseUrl = '';
+      
+      if (typeof window !== 'undefined') {
+        // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
+        baseUrl = window.location.origin;
+      } else {
+        // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
+        if (process.env.VERCEL_URL) {
+          // Vercel ortamında çalışıyoruz
+          baseUrl = `https://${process.env.VERCEL_URL}`;
+        } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+          // Özel olarak tanımlanmış site URL'si varsa kullanalım
+          baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+        } else {
+          // Hala development ortamındayız
+          baseUrl = 'http://localhost:3000';
+        }
+      }
         
       const url = `${baseUrl}/api/rooms/${mappedId}?t=${timestamp}`;
       console.log('Direkt API isteği yapılıyor:', url);
