@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowLeft, FaSave, FaUpload, FaTrash, FaRegImage } from 'react-icons/fa';
 import { BiSortAlt2 } from 'react-icons/bi';
@@ -17,9 +17,10 @@ interface AdminRoomGalleryPageProps {
 }
 
 export default function AdminRoomGalleryPage({ params }: AdminRoomGalleryPageProps) {
-  // Geçici çözüm: params'ı doğrudan kullan
-  const lang = params.lang;
-  const id = params.id;
+  // useParams hook'unu kullan
+  const routeParams = useParams();
+  const lang = routeParams.lang as string;
+  const id = routeParams.id as string;
   
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);

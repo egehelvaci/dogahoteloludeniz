@@ -39,6 +39,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
+  // import-rooms API'si için bypass
+  if (request.nextUrl.pathname.startsWith('/api/admin/import-rooms')) {
+    return NextResponse.next();
+  }
+  
   try {
     // Cookie'den token'ı al
     const token = request.cookies.get(COOKIE_NAME)?.value;

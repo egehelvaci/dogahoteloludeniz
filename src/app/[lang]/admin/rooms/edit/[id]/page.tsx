@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaArrowLeft, FaSave, FaUpload, FaTimes, FaTrash, FaStar } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
@@ -17,9 +17,9 @@ interface AdminEditRoomPageProps {
 }
 
 export default function AdminEditRoomPage({ params }: AdminEditRoomPageProps) {
-  const resolvedParams = React.use(params);
-  const lang = resolvedParams.lang;
-  const id = resolvedParams.id;
+  const routeParams = useParams();
+  const lang = routeParams.lang as string;
+  const id = routeParams.id as string;
   
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
