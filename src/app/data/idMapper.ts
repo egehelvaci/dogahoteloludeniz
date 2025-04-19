@@ -128,20 +128,26 @@ export async function updateDynamicIdMap(): Promise<IdMap> {
 }
 
 /**
- * Herhangi bir ID'yi (eski/yeni/slug) güncel oda ID'sine eşler
+ * Eski ID veya benzer olmayan bir UUID'yi doğru mevcut odaya eşler
  * @param id - Eşlenecek oda ID'si
- * @returns Eşleşen ID veya orijinal ID
+ * @returns Eşleşen doğru ID veya orijinal ID
  */
 export function mapRoomId(id: string): string {
   try {
     // ID null veya undefined ise orijinal değeri döndür
-    if (!id) return id;
-    
-    // Görsel veya statik dosya olabilecek ID'leri filtrele
-    if (id.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js)$/i)) {
-      console.error(`[idMapper] Dosya uzantılı geçersiz ID algılandı: ${id}`);
-      return id; // Dosya uzantılı bir ID döndür, böylece sonraki kontroller bunu reddedebilir
+    if (!id) {
+      console.log('[idMapper] Boş ID algılandı, orijinal ID döndürülüyor');
+      return id;
     }
+    
+    // Statik varlıklar için genişletilmiş filtre - özellikle görsel dosyaları, js ve css dosyaları
+    if (id.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|ico|woff|woff2|ttf|json|xml)$/i)) {
+      console.error(`[idMapper] Dosya uzantılı geçersiz ID algılandı: ${id}`);
+      // Statik dosya değil, oda ID'si bekleniyordu - bu durumu belirtmek için özel bir değer dön
+      return 'invalid-static-resource';
+    }
+    
+    // Özel `invalid-static-resource` değeri room.ts ve diğer dosyalarda kontrol edilecek
     
     // Önce statik haritada ara
     if (roomIdMap[id]) {

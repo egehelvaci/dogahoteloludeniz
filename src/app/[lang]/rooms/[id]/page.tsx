@@ -26,10 +26,11 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
     const lang = resolvedParams.lang;
     const originalId = decodeURIComponent(resolvedParams.id);
     
-    // Hatalı yönlendirmeyi önlemek için basit kontrol
-    // Eğer ID, bir görsel dosyasına veya statik dosyaya benzer formattaysa erken dön
-    if (originalId.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) {
-      console.error(`Geçersiz oda ID formatı tespit edildi (dosya uzantısı içeriyor): ${originalId}`);
+    console.log(`[RoomDetailPage] Oda detay sayfası yükleniyor - Dil: ${lang}, ID: ${originalId}`);
+    
+    // Statik varlıklar için genişletilmiş filtre - hem görseller hem de js/css dosyaları
+    if (originalId.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|ico|woff|woff2|ttf)$/i)) {
+      console.error(`[RoomDetailPage] Geçersiz oda ID formatı (statik dosya uzantısı içeriyor): ${originalId}`);
       return (
         <div className="pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
           <div className="text-center max-w-4xl mx-auto px-4">
@@ -56,39 +57,50 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
     // ID eşleme sistemini kullanarak eski ID'leri yeni UUID'lere dönüştür
     const id = mapRoomId(originalId);
     
-    console.log('Orijinal Oda ID:', originalId);
-    console.log('Eşlenen Oda ID:', id);
-    console.log('API Base URL:', getBaseUrl());
+    console.log('[RoomDetailPage] ID Bilgileri:', {
+      orijinalId: originalId,
+      eşlenenId: id,
+      baseUrl: getBaseUrl()
+    });
     
-    // Mevcut odaları kontrol et
-    console.log('Tüm odaları getirmeye çalışıyorum...');
-    const allRooms = await getRoomsForLanguage(lang);
-    console.log('Tüm mevcut odalar:', allRooms.map(room => room.id));
+    // Odaları getirmeyi sadece loglar için bir kere dene - performans için
+    let allRooms = [];
+    try {
+      console.log('[RoomDetailPage] Tüm odalar yükleniyor...');
+      allRooms = await getRoomsForLanguage(lang);
+      console.log(`[RoomDetailPage] ${allRooms.length} oda bulundu:`, 
+        allRooms.map(room => `${room.id} (${room.name})`).join(', '));
+    } catch (roomsError) {
+      console.error('[RoomDetailPage] Odalar yüklenirken hata:', roomsError);
+    }
     
     // Direkt fetch ile API çağrısı yaparak alternatif bir yöntem deneyelim
-    console.log(`Direkt fetch ile oda alınıyor: ${id}`);
+    console.log(`[RoomDetailPage] Direkt API isteği başlatılıyor - ID: ${id}`);
     let room;
     
     try {
       const baseUrl = getBaseUrl();
-      const apiUrl = `${baseUrl}/api/rooms/${id}?t=${Date.now()}`;
-      console.log('Direkt API URL:', apiUrl);
+      const timestamp = Date.now();
+      const apiUrl = `${baseUrl}/api/rooms/${id}?lang=${lang}&t=${timestamp}`;
+      console.log('[RoomDetailPage] API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         cache: 'no-store',
         next: { revalidate: 0 }
       });
       
-      console.log('API yanıt kodu:', response.status);
+      console.log('[RoomDetailPage] API yanıt durumu:', response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API hatası:', errorText);
+        console.error('[RoomDetailPage] API hatası:', response.status, errorText);
         throw new Error(`API yanıtı başarısız: ${response.status}`);
       }
       
@@ -106,21 +118,23 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
           features: lang === 'tr' ? result.data.featuresTR : result.data.featuresEN,
           gallery: result.data.gallery || []
         };
-        console.log('API ile oda alındı:', room.id);
+        console.log('[RoomDetailPage] API ile oda başarıyla alındı:', room.id);
       } else {
-        console.error('API başarılı yanıt vermedi:', result);
-        // Alternatif yöntemi deneyeceğiz
+        console.error('[RoomDetailPage] API başarılı yanıt vermedi:', result);
       }
     } catch (directApiError) {
-      console.error('Direkt API çağrısında hata:', directApiError);
-      // Hata durumunda alternatif metoda devam et
+      console.error('[RoomDetailPage] Direkt API çağrısında hata:', directApiError);
     }
     
     // Eğer direkt API çağrısı başarısız olduysa, normal metodu kullan
     if (!room) {
-      console.log(`Normal getRoomById metodu kullanılıyor (ID: ${id})...`);
-      room = await getRoomById(lang, id);
-      console.log('Normal metod ile oda alındı:', room ? room.id : 'bulunamadı');
+      console.log(`[RoomDetailPage] Alternatif getRoomById metodu deneniyor (ID: ${id})...`);
+      try {
+        room = await getRoomById(lang, id);
+        console.log('[RoomDetailPage] Alternatif metod sonucu:', room ? 'Oda bulundu' : 'Oda bulunamadı');
+      } catch (roomError) {
+        console.error('[RoomDetailPage] Alternatif metod hatası:', roomError);
+      }
     }
     
     // Oda bulunamadıysa

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../../../lib/db';
+import { executeQuery } from '@/lib/db';
 import { notifyRoomsUpdated } from '../websocket/route';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../../../lib/db';
 import { revalidatePath } from 'next/cache';
+import { connection } from '@/lib/db'; // Next.js 15 uyumluluğu
 
 // Define a basic interface for Room items based on usage (Add export)
 export interface RoomItem {
@@ -34,12 +35,25 @@ interface QueryResult<T> {
   release: () => void;
 }
 
-// Tüm odaları getir
-export const dynamic = 'force-dynamic'; // NextJS'e bu sayfanın dinamik olduğunu belirt
-export const fetchCache = 'force-no-store'; // Cache kullanılmamasını zorla
+// Dinamik içerik oluşturulacak
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const runtime = 'nodejs';
 
+// Cache kullanılmamasını zorla
 export async function GET(request: Request) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+
+  // URL'den dil parametresini al
+  const url = new URL(request.url);
+  const lang = url.searchParams.get('lang') || 'tr';
+  const includeInactive = url.searchParams.get('includeInactive') === 'true';
+  
+  console.log(`[API] /api/rooms isteği - Dil: ${lang}, includeInactive: ${includeInactive}`);
+
   try {
+    // SQL sorgusunu oluştur - aktif odaları getir (aksi belirtilmedikçe)
     const query = `
       SELECT 
         r.id, 
@@ -67,6 +81,7 @@ export async function GET(request: Request) {
           '[]'::json
         ) as gallery
       FROM rooms r
+      ${includeInactive ? '' : 'WHERE r.active = true'}
       ORDER BY r.order_number ASC
     `;
     
@@ -74,6 +89,7 @@ export async function GET(request: Request) {
     
     // API yanıtı için önbellekleme önleyici başlıklar ekle
     const headers = new Headers({
+      'Content-Type': 'application/json',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
@@ -85,12 +101,13 @@ export async function GET(request: Request) {
       { headers }
     );
   } catch (error) {
-    console.error('Odalar listesi alınırken hata:', error);
+    console.error('[API] Odalar listesi alınırken hata:', error);
     return NextResponse.json(
-      { success: false, message: 'Odalar alınamadı' },
+      { success: false, message: 'Odalar alınamadı', error: String(error) },
       { 
         status: 500,
         headers: {
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',

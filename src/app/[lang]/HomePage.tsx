@@ -23,6 +23,7 @@ import ScrollAnimationWrapper from '../components/ScrollAnimationWrapper';
 import { AnimatedCounter, AnimatedText } from '../../components/micro-interactions/MicroInteractions';
 import { getRoomsForLanguage } from '../data/rooms';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
+import { getBaseUrl } from '@/lib/utils';
 
 type HomePageProps = {
   lang: string;
@@ -217,21 +218,29 @@ export default function HomePage({ lang }: HomePageProps) {
     // Client tarafında çalıştığında oda verilerini yükle
     const loadRooms = async () => {
       try {
+        // getBaseUrl fonksiyonunu kullanarak taban URL'i alıyoruz
+        const baseUrl = getBaseUrl();
+        const timestamp = Date.now();
         // No-store ile veri çekme, API önbelleğini bypass etmek için
-        const fetchUrl = typeof window !== 'undefined' 
-          ? `${window.location.origin}/api/rooms?t=${Date.now()}` 
-          : 'http://localhost:3000/api/rooms';
+        const fetchUrl = `${baseUrl}/api/rooms?lang=${lang}&t=${timestamp}`;
+        console.log('Ana sayfa odalar API isteği:', fetchUrl);
           
         const response = await fetch(fetchUrl, {
+          method: 'GET',
           cache: 'no-store',
           headers: {
+            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          next: { revalidate: 0 }
         });
         
         if (!response.ok) {
-          throw new Error('Oda verileri alınamadı');
+          const errorText = await response.text();
+          console.error('Oda verileri alınamadı:', response.status, errorText);
+          throw new Error(`Oda verileri alınamadı: ${response.status}`);
         }
         
         const data = await response.json();
@@ -295,27 +304,30 @@ export default function HomePage({ lang }: HomePageProps) {
   // Servis verilerini getir
   useEffect(() => {
     const fetchServices = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        
-        // Doğrudan API'den taze veri çekme
+        // getBaseUrl fonksiyonunu kullanarak taban URL'i alıyoruz
+        const baseUrl = getBaseUrl();
         const timestamp = Date.now();
-        const baseUrl = window.location.origin;
+        const fetchUrl = `${baseUrl}/api/services?lang=${lang}&t=${timestamp}`;
+        console.log('Ana sayfa servisler API isteği:', fetchUrl);
         
-        // Public API'yi kullan - /api/services
-        const response = await fetch(`${baseUrl}/api/services?t=${timestamp}`, {
+        const response = await fetch(fetchUrl, {
           method: 'GET',
+          cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
           },
-          cache: 'no-store'
+          next: { revalidate: 0 }
         });
         
         if (!response.ok) {
-          throw new Error(`Servis verileri alınamadı: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('Servis verileri alınamadı:', response.status, errorText);
+          throw new Error(`Servis verileri alınamadı: ${response.status}`);
         }
         
         const data = await response.json();

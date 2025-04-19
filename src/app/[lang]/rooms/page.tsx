@@ -35,20 +35,29 @@ export default function RoomsPage({ params }: RoomsPageProps) {
     const loadRooms = async () => {
       try {
         setLoading(true);
-        // No-store ile veri çekme, API önbelleğini bypass etmek için
+        // getBaseUrl kullanarak URL oluştur
         const baseUrl = getBaseUrl();
-        const fetchUrl = `${baseUrl}/api/rooms?t=${Date.now()}`;
+        const timestamp = Date.now();
+        // Dil parametresini ekleyerek URL oluştur
+        const fetchUrl = `${baseUrl}/api/rooms?lang=${lang}&t=${timestamp}`;
+        console.log('Odalar sayfası API isteği:', fetchUrl);
           
         const response = await fetch(fetchUrl, {
+          method: 'GET',
           cache: 'no-store',
           headers: {
+            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          next: { revalidate: 0 }
         });
         
         if (!response.ok) {
-          throw new Error('Oda verileri alınamadı');
+          const errorText = await response.text();
+          console.error('Odalar sayfası - veri alınamadı:', response.status, errorText);
+          throw new Error(`Oda verileri alınamadı: ${response.status}`);
         }
         
         const data = await response.json();
@@ -98,17 +107,24 @@ export default function RoomsPage({ params }: RoomsPageProps) {
           setActiveImages({});
         }
       } catch (error) {
-        console.error('Odalar yüklenirken hata oluştu:', error);
-        setRooms([]);
-        setFilteredRooms([]);
-        setActiveImages({});
+        console.error('Oda verileri yüklenirken hata:', error);
+        
+        // Alternatif veri kaynağını dene
+        try {
+          console.log('Alternatif metod ile veri alınıyor...');
+          const fallbackRooms = await getRoomsForLanguage(lang);
+          setRooms(fallbackRooms);
+        } catch (fallbackError) {
+          console.error('Alternatif metod da başarısız oldu:', fallbackError);
+          setError(t('An error occurred while loading rooms data'));
+        }
       } finally {
         setLoading(false);
       }
     };
     
     loadRooms();
-  }, [lang]);
+  }, [lang, t]);
 
   // Filtreleme işlemi
   useEffect(() => {
