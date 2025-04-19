@@ -12,24 +12,10 @@ interface RoomDetailPageProps {
   };
 }
 
-// Sayfayı ISR (Incremental Static Regeneration) modunda çalıştır
-// Bu, sayfanın ilk kez erişildiğinde oluşturulup önbelleğe alınmasını sağlar
-export const dynamic = 'force-static';
-export const revalidate = 3600; // 1 saat sonra yeniden doğrula
-export const dynamicParams = true; // Dinamik parametreler için fallback'i etkinleştir
-
-// generateStaticParams fonksiyonu ile build sırasında hangi sayfaların önceden oluşturulacağını belirtiyoruz
-export async function generateStaticParams() {
-  // TR ve EN dilleri için tüm odaları alıyoruz
-  const trRooms = await getRoomsForLanguage('tr');
-  const enRooms = await getRoomsForLanguage('en');
-  
-  // Her dil-oda kombinasyonu için bir statik sayfa oluşturuyoruz
-  return [
-    ...trRooms.map(room => ({ lang: 'tr', id: room.id })),
-    ...enRooms.map(room => ({ lang: 'en', id: room.id }))
-  ];
-}
+// Sayfayı tamamen dinamik yapmak için
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const runtime = 'nodejs';
 
 export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
   // Next.js 15'te params Promise olduğu için await ile çözümlüyoruz

@@ -4,7 +4,6 @@ import { notifyRoomsUpdated } from '../websocket/route';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../../../lib/db';
 import { revalidatePath } from 'next/cache';
-import { randomUUID } from 'crypto';
 
 // Define a basic interface for Room items based on usage (Add export)
 export interface RoomItem {
@@ -35,33 +34,32 @@ interface QueryResult<T> {
   release: () => void;
 }
 
-// Tüm API isteklerini dinamik olarak yap
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
+// Tüm odaları getir
+export const dynamic = 'force-dynamic'; // NextJS'e bu sayfanın dinamik olduğunu belirt
+export const fetchCache = 'force-no-store'; // Cache kullanılmamasını zorla
 
-// GET - Tüm odaları getir
 export async function GET(request: Request) {
   try {
-    // URL parametrelerini al
-    const url = new URL(request.url);
-    const lang = url.searchParams.get('lang') || 'tr';
-    
-    console.log(`API - Tüm odalar isteniyor. Dil: ${lang}`);
-    
-    // Dile göre oda verilerini getir
     const query = `
       SELECT 
         r.id, 
-        r.name_${lang} as name, 
-        r.description_${lang} as description, 
+        r.name_tr as "nameTR", 
+        r.name_en as "nameEN", 
+        r.description_tr as "descriptionTR", 
+        r.description_en as "descriptionEN", 
         r.main_image_url as image, 
-        r.price_${lang} as price, 
+        r.main_image_url as "mainImageUrl", 
+        r.price_tr as "priceTR", 
+        r.price_en as "priceEN", 
         r.capacity, 
         r.size, 
-        r.features_${lang} as features, 
+        r.features_tr as "featuresTR", 
+        r.features_en as "featuresEN", 
         r.type, 
-        r.active,
-        r.order_number as order_number,
+        r.room_type_id as "roomTypeId",
+        r.active, 
+        r.order_number as order,
+        r.order_number as "orderNumber",
         COALESCE(
           (SELECT json_agg(image_url ORDER BY order_number ASC)
            FROM room_gallery
@@ -69,42 +67,36 @@ export async function GET(request: Request) {
           '[]'::json
         ) as gallery
       FROM rooms r
-      WHERE r.active = true
       ORDER BY r.order_number ASC
     `;
     
     const result = await executeQuery(query);
     
-    // SQL'den gelen özellikleri dizi formatına dönüştür
-    const rooms = result.rows.map(room => {
-      // PostgreSQL'den gelen diziler {} formatında olabilir
-      if (room.features && typeof room.features === 'string') {
-        try {
-          room.features = room.features.replace(/^\{|\}$/g, '').split(',');
-        } catch (error) {
-          console.error('Features dönüştürme hatası:', error);
-          room.features = [];
+    // API yanıtı için önbellekleme önleyici başlıklar ekle
+    const headers = new Headers({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
+    return NextResponse.json(
+      { success: true, data: result.rows },
+      { headers }
+    );
+  } catch (error) {
+    console.error('Odalar listesi alınırken hata:', error);
+    return NextResponse.json(
+      { success: false, message: 'Odalar alınamadı' },
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store'
         }
       }
-      
-      return room;
-    });
-    
-    console.log(`API - ${rooms.length} oda bulundu.`);
-    
-    // Önbellekleme önleyici başlıklar ekle
-    return NextResponse.json(rooms, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-  } catch (error) {
-    console.error('Oda verileri çekme hatası:', error);
-    return NextResponse.json(
-      { success: false, message: 'Oda verileri alınamadı', error: (error as Error).message },
-      { status: 500 }
     );
   }
 }

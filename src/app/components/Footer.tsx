@@ -4,11 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaFacebookF, FaTwitter, FaInstagram, FaWhatsapp, FaClock } from 'react-icons/fa';
+import { getRoomsForLanguage } from '../data/rooms';
 import CookieConsent from './CookieConsent';
 import Image from 'next/image';
-
-// Artık veritabanı erişimi gerektiren işlevi doğrudan dahil etmiyoruz
-// Bunun yerine API veya props aracılığıyla iletilen veri yapısını kullanacağız
 
 interface LinkItem {
   title: string;
@@ -35,28 +33,14 @@ export default function Footer({ lang: propLang }: FooterProps) {
     whatsapp: '+90 532 066 48 08'
   };
   
-  // Oda verilerini API aracılığıyla yükle
+  // Oda verilerini yükle
   useEffect(() => {
-    // Veritabanı erişimini API endpoint üzerinden yap
     const loadRoomData = async () => {
       try {
-        // API isteği ile odaları getir
-        const response = await fetch(`/api/rooms?lang=${language}`, {
-          method: 'GET',
-          headers: {
-            'Accept-Language': language,
-            'Cache-Control': 'no-cache'
-          }
-        });
+        const rooms = await getRoomsForLanguage(language);
         
-        if (!response.ok) {
-          throw new Error('Odalar yüklenirken hata oluştu');
-        }
-        
-        const data = await response.json();
-        
-        // API'den dönen verileri oda linklerine dönüştür
-        const links = data.map(room => ({
+        // Oda linklerini oluştur
+        const links = rooms.map(room => ({
           title: room.name,
           path: `/${language}/rooms/${room.id}`
         }));
@@ -64,13 +48,7 @@ export default function Footer({ lang: propLang }: FooterProps) {
         setRoomLinks(links);
       } catch (error) {
         console.error('Footer oda linkleri yüklenirken hata:', error);
-        // Hata durumunda varsayılan linkler göster
-        setRoomLinks([
-          { title: language === 'tr' ? 'Standart Oda' : 'Standard Room', path: `/${language}/rooms/standard-room` },
-          { title: language === 'tr' ? 'Üç Kişilik Oda' : 'Triple Room', path: `/${language}/rooms/triple-room` },
-          { title: language === 'tr' ? 'Süit Oda' : 'Suite Room', path: `/${language}/rooms/suite-room` },
-          { title: language === 'tr' ? 'Apart Oda' : 'Apart Room', path: `/${language}/rooms/apart-room` }
-        ]);
+        setRoomLinks([]);
       }
     };
     
