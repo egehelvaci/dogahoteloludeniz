@@ -59,8 +59,15 @@ export function getBaseUrl(): string {
   
   // Vercel ortamındayız
   if (process.env.VERCEL_URL) {
-    console.log('UTILS: Vercel ortamı tespit edildi, Vercel URL kullanıyoruz:', `https://${process.env.VERCEL_URL}`);
-    return `https://${process.env.VERCEL_URL}`;
+    const vercelUrl = `https://${process.env.VERCEL_URL}`;
+    console.log('UTILS: Vercel ortamı tespit edildi, Vercel URL kullanıyoruz:', vercelUrl);
+    return vercelUrl;
+  }
+  
+  // NEXT_PUBLIC_SITE_URL ortam değişkeni varsa onu kullanalım
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    console.log('UTILS: NEXT_PUBLIC_SITE_URL değişkeni tespit edildi:', process.env.NEXT_PUBLIC_SITE_URL);
+    return process.env.NEXT_PUBLIC_SITE_URL;
   }
   
   // Varsayılan değeri constants.ts'den al
