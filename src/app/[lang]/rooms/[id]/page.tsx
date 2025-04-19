@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FaArrowLeft, FaUsers, FaRulerCombined, FaCheck, FaBed, FaPhone, FaWhatsapp } from 'react-icons/fa';
 import { getRoomById, getRoomsForLanguage } from '../../../data/rooms';
+import { mapRoomId } from '../../../data/idMapper';
 import RoomGallery from './RoomGallery';
 
 interface RoomDetailPageProps {
@@ -21,9 +22,13 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
   // Next.js 15'te params Promise olduğu için await ile çözümlüyoruz
   const resolvedParams = await params;
   const lang = resolvedParams.lang;
-  const id = decodeURIComponent(resolvedParams.id);
+  const originalId = decodeURIComponent(resolvedParams.id);
   
-  console.log('Orijinal Oda ID:', id);
+  // ID eşleme sistemini kullanarak eski ID'leri yeni UUID'lere dönüştür
+  const id = mapRoomId(originalId);
+  
+  console.log('Orijinal Oda ID:', originalId);
+  console.log('Eşlenen Oda ID:', id);
   
   // Mevcut odaları kontrol et
   const allRooms = await getRoomsForLanguage(lang);
@@ -49,8 +54,13 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
             <p className="text-gray-700 mb-2 font-semibold">Hata ayıklama bilgileri:</p>
             <p className="text-gray-700">
               {lang === 'tr' 
-                ? `ID: ${id}` 
-                : `ID: ${id}`}
+                ? `Orijinal ID: ${originalId}` 
+                : `Original ID: ${originalId}`}
+            </p>
+            <p className="text-gray-700">
+              {lang === 'tr' 
+                ? `Eşlenen ID: ${id}` 
+                : `Mapped ID: ${id}`}
             </p>
             <p className="text-gray-700">
               {lang === 'tr' 

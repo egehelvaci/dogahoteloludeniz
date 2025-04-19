@@ -252,7 +252,13 @@ export async function getRoomsForLanguage(lang: string): Promise<Room[]> {
 // Belirli bir odayı ID'ye göre getiren asenkron fonksiyon
 export async function getRoomById(lang: string, id: string): Promise<Room | undefined> {
   try {
-    console.log(`getRoomById çağrıldı: lang=${lang}, id=${id}`);
+    // İthal etmeyi unutmayalım
+    const { mapRoomId } = require('./idMapper');
+    
+    // ID'yi eşle - bu fonksiyon zaten eşleme yapılmış ID için çağrılacak
+    // Ancak başka yerlerden doğrudan çağrılması durumu için ekstra kontrol ekleyelim
+    const mappedId = mapRoomId(id);
+    console.log(`getRoomById çağrıldı: lang=${lang}, id=${id}, mappedId=${mappedId}`);
 
     // Use the imported getSiteRoomById function
     // Removed: const { getSiteRoomById } = require('./admin/roomsData');
@@ -263,7 +269,7 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
         ? window.location.origin 
         : 'http://localhost:3000';
         
-      const url = `${baseUrl}/api/rooms/${id}?t=${timestamp}`;
+      const url = `${baseUrl}/api/rooms/${mappedId}?t=${timestamp}`;
       console.log('Direkt API isteği yapılıyor:', url);
       
       // Direkt API'den veriyi almaya çalış
