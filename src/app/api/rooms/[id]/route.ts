@@ -16,8 +16,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
-  // Params değerlerini bekleyerek güvenli bir şekilde kullan
-  const { id } = params;
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const id = resolvedParams.id;
   
   console.log('[API] Oda detay çağrısı:', id);
   
@@ -126,8 +129,11 @@ export async function PUT(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     const body = await request.json();
@@ -269,8 +275,11 @@ export async function DELETE(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     // Transaction kullanarak silme

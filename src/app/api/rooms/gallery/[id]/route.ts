@@ -23,8 +23,11 @@ export async function GET(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     // Odayı veritabanından getir
@@ -72,8 +75,11 @@ export async function PUT(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     const body = await request.json();
@@ -188,8 +194,11 @@ export async function POST(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     const body = await request.json();
@@ -272,8 +281,11 @@ export async function DELETE(
   // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
   await connection();
   
+  // Next.js 15 uyumluluğu için params'ı await etmeliyiz
+  const resolvedParams = await params;
+  
   // Params değerlerini güvenli bir şekilde kullan
-  const { id } = params;
+  const id = resolvedParams.id;
   
   try {
     const url = new URL(request.url);
