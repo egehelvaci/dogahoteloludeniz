@@ -38,9 +38,63 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
     const allRooms = await getRoomsForLanguage(lang);
     console.log('Tüm mevcut odalar:', allRooms.map(room => room.id));
     
-    console.log(`Oda detaylarını getiriyorum (ID: ${id})...`);
-    const room = await getRoomById(lang, id);
-    console.log('Bulunan oda:', room ? room.id : 'bulunamadı');
+    // Direkt fetch ile API çağrısı yaparak alternatif bir yöntem deneyelim
+    console.log(`Direkt fetch ile oda alınıyor: ${id}`);
+    let room;
+    
+    try {
+      const baseUrl = getBaseUrl();
+      const apiUrl = `${baseUrl}/api/rooms/${id}?t=${Date.now()}`;
+      console.log('Direkt API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
+        cache: 'no-store',
+        next: { revalidate: 0 }
+      });
+      
+      console.log('API yanıt kodu:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API hatası:', errorText);
+        throw new Error(`API yanıtı başarısız: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        room = {
+          id: result.data.id,
+          name: lang === 'tr' ? result.data.nameTR : result.data.nameEN,
+          description: lang === 'tr' ? result.data.descriptionTR : result.data.descriptionEN,
+          image: result.data.image || result.data.mainImageUrl,
+          price: lang === 'tr' ? result.data.priceTR : result.data.priceEN,
+          capacity: result.data.capacity,
+          size: result.data.size,
+          features: lang === 'tr' ? result.data.featuresTR : result.data.featuresEN,
+          gallery: result.data.gallery || []
+        };
+        console.log('API ile oda alındı:', room.id);
+      } else {
+        console.error('API başarılı yanıt vermedi:', result);
+        // Alternatif yöntemi deneyeceğiz
+      }
+    } catch (directApiError) {
+      console.error('Direkt API çağrısında hata:', directApiError);
+      // Hata durumunda alternatif metoda devam et
+    }
+    
+    // Eğer direkt API çağrısı başarısız olduysa, normal metodu kullan
+    if (!room) {
+      console.log(`Normal getRoomById metodu kullanılıyor (ID: ${id})...`);
+      room = await getRoomById(lang, id);
+      console.log('Normal metod ile oda alındı:', room ? room.id : 'bulunamadı');
+    }
     
     // Oda bulunamadıysa
     if (!room) {

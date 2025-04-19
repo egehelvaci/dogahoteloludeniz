@@ -45,27 +45,12 @@ export const getBaseUrl = (): string => {
     console.log(`[getBaseUrl] Tarayıcı ortamı tespit edildi, origin: ${origin}`);
     return origin;
   } else {
-    // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
+    // Sunucu tarafında çalışıyoruz
     console.log('[getBaseUrl] Sunucu ortamı tespit edildi');
     
-    if (process.env.VERCEL_URL) {
-      // Vercel ortamında çalışıyoruz
-      const url = `https://${process.env.VERCEL_URL}`;
-      console.log(`[getBaseUrl] Vercel ortamı tespit edildi: ${url}`);
-      return url;
-    } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-      // Alternatif Vercel URL değişkeni
-      const url = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-      console.log(`[getBaseUrl] NEXT_PUBLIC_VERCEL_URL kullanılıyor: ${url}`);
-      return url;
-    } else if (process.env.NEXT_PUBLIC_SITE_URL) {
-      // Özel olarak tanımlanmış site URL'si varsa kullanalım
-      console.log(`[getBaseUrl] NEXT_PUBLIC_SITE_URL kullanılıyor: ${process.env.NEXT_PUBLIC_SITE_URL}`);
-      return process.env.NEXT_PUBLIC_SITE_URL;
-    } else {
-      // Hala development ortamındayız
-      console.log('[getBaseUrl] Ortam değişkeni bulunamadı, localhost kullanılıyor');
-      return 'http://localhost:3000';
-    }
+    // Vercel production ortamında sabit domain kullan
+    const productionUrl = 'https://dogahotelfethiye.vercel.app';
+    console.log(`[getBaseUrl] Production URL kullanılıyor: ${productionUrl}`);
+    return productionUrl;
   }
 }; 

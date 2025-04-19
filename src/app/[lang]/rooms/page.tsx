@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FaBed, FaRulerCombined, FaUsers, FaArrowRight, FaChevronLeft, FaChevronRight, FaCoffee, FaWifi, FaWind, FaTv, FaSearch, FaFilter } from 'react-icons/fa';
 import { getRoomsForLanguage } from '../../data/rooms';
-import { mapRoomId } from '../../data/idMapper';
+import { mapRoomId, getReadableId } from '../../data/idMapper';
 import { getBaseUrl } from '@/lib/utils';
 
 interface RoomsPageProps {
@@ -376,7 +376,7 @@ export default function RoomsPage({ params }: RoomsPageProps) {
                         </div>
                         
                         <Link 
-                          href={`/${lang}/rooms/${room.id}`}
+                          href={`/${lang}/rooms/${getReadableId(room.id)}`}
                           className="w-full inline-flex items-center justify-center bg-[#169c71] hover:bg-[#117a59] text-white py-2.5 md:py-3 px-4 md:px-6 rounded-lg transition-colors group/btn shadow-md text-sm md:text-base"
                         >
                           <span className="mr-2">{lang === 'tr' ? 'Detayları Görüntüle' : 'View Details'}</span>
@@ -476,7 +476,7 @@ export default function RoomsPage({ params }: RoomsPageProps) {
                         </div>
                         
                         <Link 
-                          href={`/${lang}/rooms/${room.id}`}
+                          href={`/${lang}/rooms/${getReadableId(room.id)}`}
                           className="w-full inline-flex items-center justify-center bg-[#169c71] hover:bg-[#117a59] text-white py-2.5 md:py-3 px-4 md:px-6 rounded-lg transition-colors group/btn shadow-md text-sm md:text-base"
                         >
                           <span className="mr-2">{lang === 'tr' ? 'Detayları Görüntüle' : 'View Details'}</span>
