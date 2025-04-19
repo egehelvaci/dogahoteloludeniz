@@ -8,14 +8,11 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 // GET - Belirli bir odayı ID'ye göre getir
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  console.log('[API] GET çağrısı alındı:', params.id);
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  console.log('[API] Oda detay çağrısı:', params.id);
   
   try {
-    // ID'yi al ve temizle
+    // ID'yi al
     const id = params.id;
     
     if (!id) {
@@ -25,8 +22,17 @@ export async function GET(
       );
     }
 
-    console.log('[API] Oda ID ile sorgu yapılıyor:', id);
-
+    // Önce tüm aktif odaları getir
+    const allRoomsQuery = `SELECT id, name_tr, active FROM rooms WHERE active = true ORDER BY order_number`;
+    const allRoomsResult = await executeQuery(allRoomsQuery);
+    const availableRooms = allRoomsResult.rows.map((room: any) => ({
+      id: room.id,
+      name: room.name_tr
+    }));
+    
+    console.log('[API] Mevcut odalar:', JSON.stringify(availableRooms));
+    
+    // Verilen ID ile oda detayını getir
     const query = `
       SELECT 
         r.id, 
@@ -35,18 +41,14 @@ export async function GET(
         r.description_tr as "descriptionTR", 
         r.description_en as "descriptionEN", 
         r.main_image_url as image, 
-        r.main_image_url as "mainImageUrl", 
         r.price_tr as "priceTR", 
         r.price_en as "priceEN", 
         r.capacity, 
         r.size, 
         r.features_tr as "featuresTR", 
         r.features_en as "featuresEN", 
-        r.type, 
-        r.room_type_id as "roomTypeId",
-        r.active, 
-        r.order_number as order,
-        r.order_number as "orderNumber",
+        r.type,
+        r.active,
         COALESCE(
           (SELECT json_agg(image_url ORDER BY order_number ASC)
            FROM room_gallery
@@ -57,110 +59,44 @@ export async function GET(
       WHERE r.id = $1
     `;
     
-    // Tüm odaları da getir (hata durumunda listelemek için)
-    const allRoomsQuery = `
-      SELECT id, name_tr, name_en, active FROM rooms ORDER BY order_number
-    `;
+    const result = await executeQuery(query, [id]);
     
-    try {
-      console.log('[API] Veritabanı sorgusu yapılıyor...');
-      const result = await executeQuery(query, [id]);
-      const allRooms = await executeQuery(allRoomsQuery);
-      
-      console.log('[API] Tüm odalar:', allRooms.rows.map((r: any) => `${r.id} (${r.name_tr}/${r.name_en})`));
-      
-      if (result.rows.length === 0) {
-        console.log(`[API] Oda bulunamadı: ${id}`);
-        
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: 'Oda bulunamadı',
-            requestedId: id,
-            availableRooms: allRooms.rows.map((r: any) => ({
-              id: r.id,
-              nameTR: r.name_tr,
-              nameEN: r.name_en,
-              active: r.active
-            }))
-          },
-          { status: 404 }
-        );
-      }
-      
-      // SQL'den dönen sonuçları doğru formata çevir
-      const room = result.rows[0];
-      
-      // features_tr ve features_en alanlarının dizi olduğundan emin ol
-      // PostgreSQL'den gelen diziler {} formatında olabilir
-      if (room.featuresTR && !Array.isArray(room.featuresTR)) {
-        console.log('featuresTR diziye dönüştürülüyor:', room.featuresTR);
-        try {
-          if (typeof room.featuresTR === 'string') {
-            // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
-            room.featuresTR = room.featuresTR.replace(/^\{|\}$/g, '').split(',');
-          }
-        } catch (error) {
-          console.error('featuresTR dönüştürme hatası:', error);
-          room.featuresTR = [];
-        }
-      }
-      
-      if (room.featuresEN && !Array.isArray(room.featuresEN)) {
-        console.log('featuresEN diziye dönüştürülüyor:', room.featuresEN);
-        try {
-          if (typeof room.featuresEN === 'string') {
-            // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
-            room.featuresEN = room.featuresEN.replace(/^\{|\}$/g, '').split(',');
-          }
-        } catch (error) {
-          console.error('featuresEN dönüştürme hatası:', error);
-          room.featuresEN = [];
-        }
-      }
-      
-      console.log('İşlenmiş oda verisi:', {
-        ...room,
-        featuresTR: room.featuresTR,
-        featuresEN: room.featuresEN
-      });
-      
-      // API yanıtı için önbellekleme önleyici başlıklar ekle
-      const headers = new Headers({
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'Surrogate-Control': 'no-store'
-      });
-      
-      console.log('[API] Oda başarıyla bulundu:', room.id);
-      
+    if (result.rows.length === 0) {
+      console.log(`[API] Oda bulunamadı: ${id}`);
       return NextResponse.json(
-        { success: true, data: room },
-        { headers }
+        { 
+          success: false, 
+          message: 'Oda bulunamadı',
+          requestedId: id,
+          availableRooms
+        },
+        { status: 404 }
       );
-    } catch (dbError) {
-      console.error('[API] Veritabanı hata detayları:', dbError);
-      throw new Error(`Veritabanı hatası: ${dbError.message || 'Bilinmeyen veritabanı hatası'}`);
     }
+    
+    // API yanıtı için önbellekleme önleyici başlıklar ekle
+    const headers = new Headers({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+    
+    console.log('[API] Oda başarıyla bulundu:', result.rows[0].id);
+    
+    return NextResponse.json(
+      { success: true, data: result.rows[0] },
+      { headers }
+    );
   } catch (error) {
     console.error('[API] Oda bilgisi alınırken hata:', error);
     return NextResponse.json(
       { 
         success: false, 
         message: 'Oda bilgisi alınamadı', 
-        error: String(error),
-        errorStack: error.stack
+        error: String(error)
       },
-      { 
-        status: 500,
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'Surrogate-Control': 'no-store'
-        }
-      }
+      { status: 500 }
     );
   }
 }
