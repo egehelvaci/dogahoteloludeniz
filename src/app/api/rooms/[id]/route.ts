@@ -12,7 +12,7 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  console.log('API GET çağrısı alındı:', params.id);
+  console.log('[API] GET çağrısı alındı:', params.id);
   
   try {
     // ID'yi al ve temizle
@@ -24,6 +24,8 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    console.log('[API] Oda ID ile sorgu yapılıyor:', id);
 
     const query = `
       SELECT 
@@ -55,80 +57,101 @@ export async function GET(
       WHERE r.id = $1
     `;
     
-    const result = await executeQuery(query, [id]);
+    // Tüm odaları da getir (hata durumunda listelemek için)
+    const allRoomsQuery = `
+      SELECT id, name_tr, name_en, active FROM rooms ORDER BY order_number
+    `;
     
-    if (result.rows.length === 0) {
-      console.log(`Oda bulunamadı: ${id}`);
-      // Gerçek UUID'nin o-olmayan oda identifierleri ile eşleşme denemesi yap
-      const allRoomsQuery = `SELECT id FROM rooms`;
+    try {
+      console.log('[API] Veritabanı sorgusu yapılıyor...');
+      const result = await executeQuery(query, [id]);
       const allRooms = await executeQuery(allRoomsQuery);
-      const availableRoomIds = allRooms.rows.map((r: any) => r.id);
       
-      console.log('Mevcut tüm oda ID\'leri:', availableRoomIds);
+      console.log('[API] Tüm odalar:', allRooms.rows.map((r: any) => `${r.id} (${r.name_tr}/${r.name_en})`));
+      
+      if (result.rows.length === 0) {
+        console.log(`[API] Oda bulunamadı: ${id}`);
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Oda bulunamadı',
+            requestedId: id,
+            availableRooms: allRooms.rows.map((r: any) => ({
+              id: r.id,
+              nameTR: r.name_tr,
+              nameEN: r.name_en,
+              active: r.active
+            }))
+          },
+          { status: 404 }
+        );
+      }
+      
+      // SQL'den dönen sonuçları doğru formata çevir
+      const room = result.rows[0];
+      
+      // features_tr ve features_en alanlarının dizi olduğundan emin ol
+      // PostgreSQL'den gelen diziler {} formatında olabilir
+      if (room.featuresTR && !Array.isArray(room.featuresTR)) {
+        console.log('featuresTR diziye dönüştürülüyor:', room.featuresTR);
+        try {
+          if (typeof room.featuresTR === 'string') {
+            // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
+            room.featuresTR = room.featuresTR.replace(/^\{|\}$/g, '').split(',');
+          }
+        } catch (error) {
+          console.error('featuresTR dönüştürme hatası:', error);
+          room.featuresTR = [];
+        }
+      }
+      
+      if (room.featuresEN && !Array.isArray(room.featuresEN)) {
+        console.log('featuresEN diziye dönüştürülüyor:', room.featuresEN);
+        try {
+          if (typeof room.featuresEN === 'string') {
+            // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
+            room.featuresEN = room.featuresEN.replace(/^\{|\}$/g, '').split(',');
+          }
+        } catch (error) {
+          console.error('featuresEN dönüştürme hatası:', error);
+          room.featuresEN = [];
+        }
+      }
+      
+      console.log('İşlenmiş oda verisi:', {
+        ...room,
+        featuresTR: room.featuresTR,
+        featuresEN: room.featuresEN
+      });
+      
+      // API yanıtı için önbellekleme önleyici başlıklar ekle
+      const headers = new Headers({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      });
+      
+      console.log('[API] Oda başarıyla bulundu:', room.id);
       
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Oda bulunamadı',
-          availableRooms: availableRoomIds
-        },
-        { status: 404 }
+        { success: true, data: room },
+        { headers }
       );
+    } catch (dbError) {
+      console.error('[API] Veritabanı hata detayları:', dbError);
+      throw new Error(`Veritabanı hatası: ${dbError.message || 'Bilinmeyen veritabanı hatası'}`);
     }
-    
-    // SQL'den dönen sonuçları doğru formata çevir
-    const room = result.rows[0];
-    
-    // features_tr ve features_en alanlarının dizi olduğundan emin ol
-    // PostgreSQL'den gelen diziler {} formatında olabilir
-    if (room.featuresTR && !Array.isArray(room.featuresTR)) {
-      console.log('featuresTR diziye dönüştürülüyor:', room.featuresTR);
-      try {
-        if (typeof room.featuresTR === 'string') {
-          // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
-          room.featuresTR = room.featuresTR.replace(/^\{|\}$/g, '').split(',');
-        }
-      } catch (error) {
-        console.error('featuresTR dönüştürme hatası:', error);
-        room.featuresTR = [];
-      }
-    }
-    
-    if (room.featuresEN && !Array.isArray(room.featuresEN)) {
-      console.log('featuresEN diziye dönüştürülüyor:', room.featuresEN);
-      try {
-        if (typeof room.featuresEN === 'string') {
-          // PostgreSQL'den gelen dizi formatını işle: {item1,item2}
-          room.featuresEN = room.featuresEN.replace(/^\{|\}$/g, '').split(',');
-        }
-      } catch (error) {
-        console.error('featuresEN dönüştürme hatası:', error);
-        room.featuresEN = [];
-      }
-    }
-    
-    console.log('İşlenmiş oda verisi:', {
-      ...room,
-      featuresTR: room.featuresTR,
-      featuresEN: room.featuresEN
-    });
-    
-    // API yanıtı için önbellekleme önleyici başlıklar ekle
-    const headers = new Headers({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Surrogate-Control': 'no-store'
-    });
-    
-    return NextResponse.json(
-      { success: true, data: room },
-      { headers }
-    );
   } catch (error) {
-    console.error('Oda bilgisi alınırken hata:', error);
+    console.error('[API] Oda bilgisi alınırken hata:', error);
     return NextResponse.json(
-      { success: false, message: 'Oda bilgisi alınamadı', error: String(error) },
+      { 
+        success: false, 
+        message: 'Oda bilgisi alınamadı', 
+        error: String(error),
+        errorStack: error.stack
+      },
       { 
         status: 500,
         headers: {
