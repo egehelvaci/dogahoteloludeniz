@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import * as crypto from 'crypto';
 
-// Güvenlik için ortam değişkenlerinden alınması gereken değerler
-// Bu değerleri production ortamında .env dosyasına taşıyın
-// const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-change-in-production'; // Removed unused variable
+// JWT Secret - ortam değişkeninden al
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-change-in-production-dogahotel-2025';
 const COOKIE_NAME = 'auth_token';
 
 // Kullanıcı kimlik bilgilerini kontrol et
@@ -24,17 +24,47 @@ function validateCredentials(username: string, password: string) {
   return password === ADMIN_PASSWORD;
 }
 
-// Basit token oluşturma
+// JWT token oluşturma
 function generateToken(username: string) {
-  // Bu basit bir simülasyon - gerçek uygulamada JWT kullanılmalıdır
-  // Güvenlik açısından, bu basit örnek yerine proper bir JWT kütüphanesi kullanılmalıdır
+  // JWT header
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
   
-  const timestamp = Date.now();
-  const randomValue = Math.random().toString(36).substring(2);
+  // JWT payload
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: username,
+    name: 'Admin User',
+    role: 'admin',
+    iat: now,
+    exp: now + (8 * 60 * 60), // 8 saat geçerli
+    jti: crypto.randomBytes(16).toString('hex')
+  };
   
-  // Basit bir token formatı oluşturuyoruz
-  // Bu güvenli değildir, sadece demo amaçlıdır!
-  return `${username}_${timestamp}_${randomValue}`;
+  // Base64Url encode header ve payload
+  const headerBase64 = Buffer.from(JSON.stringify(header)).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+    
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  
+  // İmza oluştur
+  const signatureInput = `${headerBase64}.${payloadBase64}`;
+  const signature = crypto.createHmac('sha256', JWT_SECRET)
+    .update(signatureInput)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  
+  // JWT token
+  return `${headerBase64}.${payloadBase64}.${signature}`;
 }
 
 export async function POST(request: NextRequest) {

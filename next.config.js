@@ -50,19 +50,61 @@ const nextConfig = {
         },
         // Public API isteklerini özellikle koru
         {
+          source: '/api/public-rooms/:path*',
+          destination: '/api/public-rooms/:path*',
+        },
+        {
+          source: '/api/public-rooms',
+          destination: '/api/public-rooms',
+        },
+        // Orijinal API rotaları
+        {
           source: '/api/rooms/:path*',
           destination: '/api/rooms/:path*',
-          has: [
-            {
-              type: 'header',
-              key: 'x-skip-auth',
-              value: '(?<skipAuth>.*)'
-            }
-          ]
         },
         {
           source: '/api/rooms',
           destination: '/api/rooms',
+        },
+        {
+          source: '/api/gallery/:path*',
+          destination: '/api/gallery/:path*',
+        },
+        {
+          source: '/api/gallery',
+          destination: '/api/gallery',
+        },
+        {
+          source: '/api/services/:path*',
+          destination: '/api/services/:path*',
+        },
+        {
+          source: '/api/services',
+          destination: '/api/services',
+        },
+        {
+          source: '/api/hero-slider/:path*',
+          destination: '/api/hero-slider/:path*',
+        },
+        {
+          source: '/api/hero-slider',
+          destination: '/api/hero-slider',
+        },
+        {
+          source: '/api/about/:path*',
+          destination: '/api/about/:path*',
+        },
+        {
+          source: '/api/about',
+          destination: '/api/about',
+        },
+        {
+          source: '/api/slider/:path*',
+          destination: '/api/slider/:path*',
+        },
+        {
+          source: '/api/slider',
+          destination: '/api/slider',
         },
         // Diğer API isteklerini koru
         {
