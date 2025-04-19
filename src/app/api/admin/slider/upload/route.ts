@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { uploadToImageKit } from '../../../../../lib/imagekitServer';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // İşlem süresini 60 saniyeye çıkar
+export const bodyParser = {
+  sizeLimit: '50mb' // Vercel yüklemelerinde boyut sınırını artır
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,16 +34,16 @@ export async function POST(request: NextRequest) {
     if (!allowedTypes.includes(file.type)) {
       console.error(`Desteklenmeyen dosya formatı: ${file.type}`);
       return NextResponse.json(
-        { success: false, message: 'Geçersiz dosya formatı. Yalnızca JPEG, PNG, WebP, MP4, WebM veya OGG formatları desteklenir.' },
+        { success: false, message: 'Geçersiz dosya formatı. Sadece resim dosyaları yüklenebilir.' },
         { status: 400 }
       );
     }
     
     const isVideo = file.type.startsWith('video/');
     
-    // Dosya boyutunu kontrol et (görseller için 30MB, videolar için 100MB)
-    const maxSizeImage = 30 * 1024 * 1024; // 30MB
-    const maxSizeVideo = 100 * 1024 * 1024; // 100MB
+    // Dosya boyutunu kontrol et (görseller için 10MB, videolar için 50MB)
+    const maxSizeImage = 10 * 1024 * 1024; // 10MB
+    const maxSizeVideo = 50 * 1024 * 1024; // 50MB
     const maxSize = isVideo ? maxSizeVideo : maxSizeImage;
     
     if (file.size > maxSize) {
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          message: `Dosya boyutu çok büyük. ${isVideo ? 'Videolar için maksimum 100MB' : 'Görseller için maksimum 30MB'} desteklenir.`
+          message: `Dosya boyutu çok büyük. ${isVideo ? 'Videolar için maksimum 50MB' : 'Görseller için maksimum 10MB'} desteklenir.`
         },
         { status: 400 }
       );
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
       
       // ImageKit'e yükle
       const imageKitFolder = `slider/${folder}`;
-      const result = await uploadToImageKit(bytes, fileName, imageKitFolder);
+      const result = await uploadToImageKit(Buffer.from(bytes), fileName, imageKitFolder);
       
       if (!result || !result.url) {
         console.error('ImageKit yükleme başarısız: URL döndürülmedi');

@@ -371,8 +371,8 @@ export default function EditSliderPage({ params }: EditSliderPageProps) {
                   type="any"
                   folder="slider"
                   label="Görsel veya Video Yükle"
-                  maxSizeMB={100}
-                  apiEndpoint="/api/upload"
+                  maxSizeMB={10}
+                  apiEndpoint="/api/admin/slider/upload"
                   initialUrl={formData.image || formData.videoUrl}
                 />
                 

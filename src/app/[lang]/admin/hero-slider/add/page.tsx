@@ -213,8 +213,8 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
                   type="any"
                   folder="slider"
                   label="Görsel veya Video Yükle"
-                  maxSizeMB={100}
-                  apiEndpoint="/api/upload"
+                  maxSizeMB={10}
+                  apiEndpoint="/api/admin/slider/upload"
                 />
                 
                 <p className="text-sm text-gray-500 mt-2 mb-4">
