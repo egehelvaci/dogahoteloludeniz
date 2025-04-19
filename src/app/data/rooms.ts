@@ -13,6 +13,7 @@ interface Room {
 
 // Admin panelindeki oda verileri ile senkronize olacak fonksiyonlar
 import { getRoomsData, getSiteRoomById } from './admin/roomsData'; // Added getSiteRoomById
+import { getBaseUrl } from '../../lib/utils'; // Merkezi getBaseUrl fonksiyonunu import et
 
 // Sabit veriler - sadece fallback olarak kullanılacak (Next.js 15 uyumluluğu için gerekli)
 const roomsTR: Room[] = [];
@@ -52,25 +53,8 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
     try {
       const timestamp = Date.now(); // Cache'lemeden kaçınmak için timestamp ekle
       
-      // Vercel ortamında çalışırken localhost yerine process.env.VERCEL_URL veya doğrudan kendi domain'imizi kullanalım
-      let baseUrl = '';
-      
-      if (typeof window !== 'undefined') {
-        // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
-        baseUrl = window.location.origin;
-      } else {
-        // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
-        if (process.env.VERCEL_URL) {
-          // Vercel ortamında çalışıyoruz
-          baseUrl = `https://${process.env.VERCEL_URL}`;
-        } else if (process.env.NEXT_PUBLIC_SITE_URL) {
-          // Özel olarak tanımlanmış site URL'si varsa kullanalım
-          baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-        } else {
-          // Hala development ortamındayız
-          baseUrl = 'http://localhost:3000';
-        }
-      }
+      // Merkezi getBaseUrl fonksiyonunu kullan
+      const baseUrl = getBaseUrl();
         
       const url = `${baseUrl}/api/rooms/${mappedId}?t=${timestamp}`;
       console.log('Direkt API isteği yapılıyor:', url);

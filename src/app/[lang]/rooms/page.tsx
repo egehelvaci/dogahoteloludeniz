@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { FaBed, FaRulerCombined, FaUsers, FaArrowRight, FaChevronLeft, FaChevronRight, FaCoffee, FaWifi, FaWind, FaTv, FaSearch, FaFilter } from 'react-icons/fa';
 import { getRoomsForLanguage } from '../../data/rooms';
 import { mapRoomId } from '../../data/idMapper';
+import { getBaseUrl } from '../../lib/utils';
 
 interface RoomsPageProps {
   params: {
@@ -35,9 +36,8 @@ export default function RoomsPage({ params }: RoomsPageProps) {
       try {
         setLoading(true);
         // No-store ile veri çekme, API önbelleğini bypass etmek için
-        const fetchUrl = typeof window !== 'undefined' 
-          ? `${window.location.origin}/api/rooms?t=${Date.now()}` 
-          : 'http://localhost:3000/api/rooms';
+        const baseUrl = getBaseUrl();
+        const fetchUrl = `${baseUrl}/api/rooms?t=${Date.now()}`;
           
         const response = await fetch(fetchUrl, {
           cache: 'no-store',
