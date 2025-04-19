@@ -479,6 +479,33 @@ export async function getSiteRoomById(lang: string, id: string): Promise<SiteRoo
     
     if (!room) {
       console.log('Oda bulunamadı (cache):', id);
+      
+      // Vercel'de çalıştığını algılayıp, varsayılan verileri döndür
+      if (typeof window === 'undefined' && process.env.VERCEL) {
+        console.log('Vercel ortamında varsayılan veriler kullanılıyor');
+        
+        // ID'ye göre varsayılan verileri bul
+        const defaultRoom = initialRoomData.find(r => r.id === id);
+        if (defaultRoom) {
+          // Dile göre dönüştür
+          const siteRoom: SiteRoom = {
+            id: defaultRoom.id,
+            name: lang === 'tr' ? defaultRoom.nameTR : defaultRoom.nameEN,
+            description: lang === 'tr' ? defaultRoom.descriptionTR : defaultRoom.descriptionEN,
+            image: defaultRoom.image,
+            price: lang === 'tr' ? defaultRoom.priceTR : defaultRoom.priceEN,
+            capacity: defaultRoom.capacity,
+            size: defaultRoom.size,
+            features: lang === 'tr' ? defaultRoom.featuresTR : defaultRoom.featuresEN,
+            gallery: defaultRoom.gallery,
+            type: defaultRoom.type
+          };
+          
+          console.log('Varsayılan veriler döndürülüyor:', siteRoom.id);
+          return siteRoom;
+        }
+      }
+      
       return null;
     }
 
@@ -513,6 +540,27 @@ export async function getSiteRoomById(lang: string, id: string): Promise<SiteRoo
     return siteRoom;
   } catch (error) {
     console.error('getSiteRoomById hatası:', error);
+    
+    // Hata durumunda da varsayılan verileri deneyelim
+    if (typeof window === 'undefined') {
+      console.log('Hata sonrası varsayılan veriler kontrol ediliyor');
+      const defaultRoom = initialRoomData.find(r => r.id === id);
+      if (defaultRoom) {
+        return {
+          id: defaultRoom.id,
+          name: lang === 'tr' ? defaultRoom.nameTR : defaultRoom.nameEN,
+          description: lang === 'tr' ? defaultRoom.descriptionTR : defaultRoom.descriptionEN,
+          image: defaultRoom.image,
+          price: lang === 'tr' ? defaultRoom.priceTR : defaultRoom.priceEN,
+          capacity: defaultRoom.capacity,
+          size: defaultRoom.size,
+          features: lang === 'tr' ? defaultRoom.featuresTR : defaultRoom.featuresEN,
+          gallery: defaultRoom.gallery,
+          type: defaultRoom.type
+        };
+      }
+    }
+    
     return null;
   }
 }
