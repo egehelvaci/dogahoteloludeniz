@@ -12,9 +12,19 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  console.log('API GET çağrısı alındı:', params.id);
+  
   try {
+    // ID'yi al ve temizle
     const id = params.id;
     
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: 'Geçersiz oda ID\'si' },
+        { status: 400 }
+      );
+    }
+
     const query = `
       SELECT 
         r.id, 
@@ -23,7 +33,7 @@ export async function GET(
         r.description_tr as "descriptionTR", 
         r.description_en as "descriptionEN", 
         r.main_image_url as image, 
-        r.main_image_url as "mainImageUrl",
+        r.main_image_url as "mainImageUrl", 
         r.price_tr as "priceTR", 
         r.price_en as "priceEN", 
         r.capacity, 
@@ -33,8 +43,8 @@ export async function GET(
         r.type, 
         r.room_type_id as "roomTypeId",
         r.active, 
-        r.order_number as "orderNumber",
         r.order_number as order,
+        r.order_number as "orderNumber",
         COALESCE(
           (SELECT json_agg(image_url ORDER BY order_number ASC)
            FROM room_gallery
@@ -45,21 +55,24 @@ export async function GET(
       WHERE r.id = $1
     `;
     
-    console.log('Oda verisi çekiliyor, ID:', id);
     const result = await executeQuery(query, [id]);
     
     if (result.rows.length === 0) {
+      console.log(`Oda bulunamadı: ${id}`);
+      // Gerçek UUID'nin o-olmayan oda identifierleri ile eşleşme denemesi yap
+      const allRoomsQuery = `SELECT id FROM rooms`;
+      const allRooms = await executeQuery(allRoomsQuery);
+      const availableRoomIds = allRooms.rows.map((r: any) => r.id);
+      
+      console.log('Mevcut tüm oda ID\'leri:', availableRoomIds);
+      
       return NextResponse.json(
-        { success: false, message: 'Oda bulunamadı' },
         { 
-          status: 404,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'Surrogate-Control': 'no-store'
-          }
-        }
+          success: false, 
+          message: 'Oda bulunamadı',
+          availableRooms: availableRoomIds
+        },
+        { status: 404 }
       );
     }
     
@@ -113,9 +126,9 @@ export async function GET(
       { headers }
     );
   } catch (error) {
-    console.error('Oda verisi çekme hatası:', error);
+    console.error('Oda bilgisi alınırken hata:', error);
     return NextResponse.json(
-      { success: false, message: 'Oda verisi alınamadı' },
+      { success: false, message: 'Oda bilgisi alınamadı', error: String(error) },
       { 
         status: 500,
         headers: {
