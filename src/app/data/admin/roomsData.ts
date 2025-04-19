@@ -44,9 +44,7 @@ export interface SiteRoom {
 const fetchRoomsData = async (): Promise<RoomItem[]> => {
   try {
     // Tam URL oluşturma - geliştirme veya üretim
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}/api/rooms`, {
       method: 'GET',
@@ -109,7 +107,8 @@ export async function forceClearAndFetchRooms() {
   roomsCache = undefined;
   
   try {
-    const response = await fetch('/api/rooms', {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/rooms`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -197,9 +196,7 @@ export async function getRoomById(id: string): Promise<RoomItem | null> {
 export async function fetchRoomById(id: string): Promise<RoomItem | null> {
   try {
     // Tam URL oluşturma
-    const baseUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     // Timestamp ekleyerek cache'lemeyi önle
     const timestamp = Date.now();
@@ -415,7 +412,8 @@ export const updateRoomItem = async (id: string, updatedData: Partial<RoomItem>)
     console.log('UpdateRoomItem - Gönderilecek veri:', JSON.stringify(updatedData, null, 2));
     
     // API isteği - veriyi olduğu gibi gönder (page.tsx'te zaten formatlandı)
-    const response = await fetch(`/api/rooms/${id}`, {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/rooms/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
