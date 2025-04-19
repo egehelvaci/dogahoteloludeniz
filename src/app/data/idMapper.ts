@@ -10,20 +10,25 @@ interface IdMap {
 // Eski ID'leri yeni ID'lere eşleme
 export const roomIdMap: IdMap = {
   // Eski okunabilir ID'lerden yeni UUID'lere
-  'standard-room': '43c7e499-ba30-40a9-a010-79902cd38558', // Standart Oda
-  'triple-room': 'd50b9afd-9964-4fe0-8f5c-70bcf19beb76',   // Üç Kişilik Oda
-  'suite-room': '448a5110-8ffa-4059-8264-6e171f919ff1',    // Süit Oda
-  'apart-room': '73c5fbe8-0b05-4c21-8374-09bbd5fee920',    // Apart Oda
+  'standard-room': '3b787da0-0016-48d1-837f-648e73981817', // Standart Oda
+  'triple-room': '553fa4e6-9c09-461c-9ae7-bdcb321e2b91',   // Üç Kişilik Oda
+  'suite-room': '46cb020a-fad4-4a8b-bb84-7f2aeffb4bd8',    // Süit Oda
+  'apart-room': '4180ee6f-9db6-4999-8bd6-839790c219ba',    // Apart Oda
   
-  // Vercel'den gelen UUID hataları için eklenebilir
-  '08a00bb0-48fa-4cfc-90e6-f08a53797154': '43c7e499-ba30-40a9-a010-79902cd38558', // Muhtemelen Standart Oda için
-  '3b787da0-0016-48d1-837f-648e73981817': '43c7e499-ba30-40a9-a010-79902cd38558', // Yeni eklenen hatalı UUID, Standart Oda'ya yönlendir
+  // ESKİ - YENİ ID eşleştirmeleri (Vercel hata mesajından alındı)
+  '43c7e499-ba30-40a9-a010-79902cd38558': '3b787da0-0016-48d1-837f-648e73981817', // Eski Standart Oda -> Yeni Standart Oda
+  'd50b9afd-9964-4fe0-8f5c-70bcf19beb76': '553fa4e6-9c09-461c-9ae7-bdcb321e2b91', // Eski Triple -> Yeni Triple
+  '448a5110-8ffa-4059-8264-6e171f919ff1': '46cb020a-fad4-4a8b-bb84-7f2aeffb4bd8', // Eski Suite -> Yeni Suite
+  '73c5fbe8-0b05-4c21-8374-09bbd5fee920': '4180ee6f-9db6-4999-8bd6-839790c219ba', // Eski Apart -> Yeni Apart
   
-  // Vercel'de test için, kendi ID'sine de eşleyelim ki garantili olsun
-  '43c7e499-ba30-40a9-a010-79902cd38558': '43c7e499-ba30-40a9-a010-79902cd38558', // Standart Oda
-  'd50b9afd-9964-4fe0-8f5c-70bcf19beb76': 'd50b9afd-9964-4fe0-8f5c-70bcf19beb76',   // Üç Kişilik Oda
-  '448a5110-8ffa-4059-8264-6e171f919ff1': '448a5110-8ffa-4059-8264-6e171f919ff1',    // Süit Oda
-  '73c5fbe8-0b05-4c21-8374-09bbd5fee920': '73c5fbe8-0b05-4c21-8374-09bbd5fee920',    // Apart Oda
+  // Eski hatalı UUID'ler için de uygun eşlemeyi yap
+  '08a00bb0-48fa-4cfc-90e6-f08a53797154': '3b787da0-0016-48d1-837f-648e73981817',
+  
+  // Kendi ID'si ile eşleme (değiştirilmiş yeni ID'ler)
+  '3b787da0-0016-48d1-837f-648e73981817': '3b787da0-0016-48d1-837f-648e73981817', // Yeni Standart Oda
+  '553fa4e6-9c09-461c-9ae7-bdcb321e2b91': '553fa4e6-9c09-461c-9ae7-bdcb321e2b91', // Yeni Triple Oda
+  '46cb020a-fad4-4a8b-bb84-7f2aeffb4bd8': '46cb020a-fad4-4a8b-bb84-7f2aeffb4bd8', // Yeni Suite Oda
+  '4180ee6f-9db6-4999-8bd6-839790c219ba': '4180ee6f-9db6-4999-8bd6-839790c219ba', // Yeni Apart Oda
 };
 
 // UUID'den okunabilir ID'ye dönüştürme haritası
