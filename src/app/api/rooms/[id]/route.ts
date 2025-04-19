@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../../../../lib/db';
+import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated } from '../../websocket/route';
-import { randomUUID } from 'crypto';
+
+// Prisma istemcisi oluştur
+const prisma = new PrismaClient();
 
 // Tüm API isteklerini dinamik olarak yap
 export const dynamic = 'force-dynamic';
@@ -23,45 +25,31 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 
     // Önce tüm aktif odaları getir
-    const allRoomsQuery = `SELECT id, name_tr, active FROM rooms WHERE active = true ORDER BY order_number`;
-    const allRoomsResult = await executeQuery(allRoomsQuery);
-    const availableRooms = allRoomsResult.rows.map((room: any) => ({
+    const allRooms = await prisma.room.findMany({
+      where: { active: true },
+      select: { id: true, nameTR: true },
+      orderBy: { orderNumber: 'asc' }
+    });
+    
+    const availableRooms = allRooms.map(room => ({
       id: room.id,
-      name: room.name_tr
+      name: room.nameTR
     }));
     
     console.log('[API] Mevcut odalar:', JSON.stringify(availableRooms));
     
     // Verilen ID ile oda detayını getir
-    const query = `
-      SELECT 
-        r.id, 
-        r.name_tr as "nameTR", 
-        r.name_en as "nameEN", 
-        r.description_tr as "descriptionTR", 
-        r.description_en as "descriptionEN", 
-        r.main_image_url as image, 
-        r.price_tr as "priceTR", 
-        r.price_en as "priceEN", 
-        r.capacity, 
-        r.size, 
-        r.features_tr as "featuresTR", 
-        r.features_en as "featuresEN", 
-        r.type,
-        r.active,
-        COALESCE(
-          (SELECT json_agg(image_url ORDER BY order_number ASC)
-           FROM room_gallery
-           WHERE room_id = r.id), 
-          '[]'::json
-        ) as gallery
-      FROM rooms r
-      WHERE r.id = $1
-    `;
+    const room = await prisma.room.findUnique({
+      where: { id },
+      include: {
+        gallery: {
+          orderBy: { orderNumber: 'asc' },
+          select: { imageUrl: true }
+        }
+      }
+    });
     
-    const result = await executeQuery(query, [id]);
-    
-    if (result.rows.length === 0) {
+    if (!room) {
       console.log(`[API] Oda bulunamadı: ${id}`);
       return NextResponse.json(
         { 
@@ -82,10 +70,32 @@ export async function GET(request: Request, { params }: { params: { id: string }
       'Surrogate-Control': 'no-store'
     });
     
-    console.log('[API] Oda başarıyla bulundu:', result.rows[0].id);
+    // Galeri görsellerini diziye dönüştür
+    const galleryImages = room.gallery.map(item => item.imageUrl);
+    
+    // API yanıtını oluştur
+    const responseData = {
+      id: room.id,
+      nameTR: room.nameTR,
+      nameEN: room.nameEN,
+      descriptionTR: room.descriptionTR,
+      descriptionEN: room.descriptionEN,
+      image: room.mainImageUrl,
+      priceTR: room.priceTR,
+      priceEN: room.priceEN,
+      capacity: room.capacity,
+      size: room.size,
+      featuresTR: room.featuresTR,
+      featuresEN: room.featuresEN,
+      type: room.type,
+      active: room.active,
+      gallery: galleryImages
+    };
+    
+    console.log('[API] Oda başarıyla bulundu:', room.id);
     
     return NextResponse.json(
-      { success: true, data: result.rows[0] },
+      { success: true, data: responseData },
       { headers }
     );
   } catch (error) {
@@ -98,6 +108,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -113,212 +125,129 @@ export async function PUT(
     console.log('API PUT - Gelen veri:', JSON.stringify(body, null, 2));
     
     // Odanın var olup olmadığını kontrol et
-    const checkQuery = `
-      SELECT * FROM rooms 
-      WHERE id = $1
-    `;
+    const existingRoom = await prisma.room.findUnique({
+      where: { id }
+    });
     
-    const checkResult = await executeQuery(checkQuery, [id]);
-    
-    if (checkResult.rows.length === 0) {
+    if (!existingRoom) {
       return NextResponse.json(
         { success: false, message: 'Güncellenecek oda bulunamadı' },
         { status: 404 }
       );
     }
     
-    // Transaction başlat
-    const client = await (await executeQuery('BEGIN')).client;
-    
-    try {
-      // Güncellenecek alanları belirle
-      const updateFields = [];
-      const updateValues = [];
-      let paramCounter = 1;
+    // Transaction kullanarak güncelleme yap
+    const result = await prisma.$transaction(async (tx) => {
+      // Güncellenecek veriyi hazırla
+      const roomData: any = {};
       
-      if (body.nameTR !== undefined) {
-        updateFields.push(`name_tr = $${paramCounter++}`);
-        updateValues.push(body.nameTR);
-      }
+      // Temel bilgileri güncelle
+      if (body.nameTR !== undefined) roomData.nameTR = body.nameTR;
+      if (body.nameEN !== undefined) roomData.nameEN = body.nameEN;
+      if (body.descriptionTR !== undefined) roomData.descriptionTR = body.descriptionTR;
+      if (body.descriptionEN !== undefined) roomData.descriptionEN = body.descriptionEN;
       
-      if (body.nameEN !== undefined) {
-        updateFields.push(`name_en = $${paramCounter++}`);
-        updateValues.push(body.nameEN);
-      }
+      // Görsel alanı - hem image hem mainImageUrl destekle
+      if (body.image !== undefined) roomData.mainImageUrl = body.image;
+      else if (body.mainImageUrl !== undefined) roomData.mainImageUrl = body.mainImageUrl;
       
-      if (body.descriptionTR !== undefined) {
-        updateFields.push(`description_tr = $${paramCounter++}`);
-        updateValues.push(body.descriptionTR);
-      }
+      if (body.priceTR !== undefined) roomData.priceTR = body.priceTR;
+      if (body.priceEN !== undefined) roomData.priceEN = body.priceEN;
+      if (body.capacity !== undefined) roomData.capacity = body.capacity;
+      if (body.size !== undefined) roomData.size = body.size;
+      if (body.featuresTR !== undefined) roomData.featuresTR = body.featuresTR;
+      if (body.featuresEN !== undefined) roomData.featuresEN = body.featuresEN;
+      if (body.type !== undefined) roomData.type = body.type;
+      if (body.roomTypeId !== undefined) roomData.roomTypeId = body.roomTypeId;
+      if (body.active !== undefined) roomData.active = body.active;
       
-      if (body.descriptionEN !== undefined) {
-        updateFields.push(`description_en = $${paramCounter++}`);
-        updateValues.push(body.descriptionEN);
-      }
+      // Sıra numarası - hem order hem orderNumber destekle
+      if (body.order !== undefined) roomData.orderNumber = body.order;
+      else if (body.orderNumber !== undefined) roomData.orderNumber = body.orderNumber;
       
-      // Görsel alanı kontrolü - hem image hem mainImageUrl destekle
-      if (body.image !== undefined) {
-        updateFields.push(`main_image_url = $${paramCounter++}`);
-        updateValues.push(body.image);
-      } else if (body.mainImageUrl !== undefined) {
-        updateFields.push(`main_image_url = $${paramCounter++}`);
-        updateValues.push(body.mainImageUrl);
-      }
+      console.log('Güncellenecek veriler:', roomData);
       
-      if (body.priceTR !== undefined) {
-        updateFields.push(`price_tr = $${paramCounter++}`);
-        updateValues.push(body.priceTR);
-      }
-      
-      if (body.priceEN !== undefined) {
-        updateFields.push(`price_en = $${paramCounter++}`);
-        updateValues.push(body.priceEN);
-      }
-      
-      if (body.capacity !== undefined) {
-        updateFields.push(`capacity = $${paramCounter++}`);
-        updateValues.push(body.capacity);
-      }
-      
-      if (body.size !== undefined) {
-        updateFields.push(`size = $${paramCounter++}`);
-        updateValues.push(body.size);
-      }
-      
-      if (body.featuresTR !== undefined) {
-        updateFields.push(`features_tr = $${paramCounter++}`);
-        // Doğrudan dizi olarak gönder - node-postgres bu diziyi text[] olarak işleyecek
-        updateValues.push(body.featuresTR);
-      }
-      
-      if (body.featuresEN !== undefined) {
-        updateFields.push(`features_en = $${paramCounter++}`);
-        // Doğrudan dizi olarak gönder - node-postgres bu diziyi text[] olarak işleyecek 
-        updateValues.push(body.featuresEN);
-      }
-      
-      if (body.type !== undefined) {
-        updateFields.push(`type = $${paramCounter++}`);
-        updateValues.push(body.type);
-      }
-      
-      if (body.roomTypeId !== undefined) {
-        updateFields.push(`room_type_id = $${paramCounter++}`);
-        updateValues.push(body.roomTypeId);
-      }
-      
-      if (body.active !== undefined) {
-        updateFields.push(`active = $${paramCounter++}`);
-        updateValues.push(body.active);
-      }
-      
-      // Sıra numarası kontrolü - hem order hem orderNumber destekle
-      if (body.order !== undefined) {
-        updateFields.push(`order_number = $${paramCounter++}`);
-        updateValues.push(body.order);
-      } else if (body.orderNumber !== undefined) {
-        updateFields.push(`order_number = $${paramCounter++}`);
-        updateValues.push(body.orderNumber);
-      }
-      
-      console.log('Güncellenecek alanlar:', updateFields);
-      console.log('Güncellenecek değerler:', updateValues);
-      
-      // En az bir alan güncellenmeli
-      if (updateFields.length > 0) {
-        updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-        
-        // ID'yi en son parametre olarak ekle
-        updateValues.push(id);
-        
-        const updateQuery = `
-          UPDATE rooms
-          SET ${updateFields.join(', ')}
-          WHERE id = $${paramCounter}
-          RETURNING *
-        `;
-        
-        console.log('SQL Sorgusu:', updateQuery);
-        
-        const updateResult = await client.query(updateQuery, updateValues);
-        console.log('Güncelleme sonucu:', updateResult.rows[0]);
-      }
+      // Odayı güncelle
+      const updatedRoom = await tx.room.update({
+        where: { id },
+        data: roomData
+      });
       
       // Galeri görsellerini güncelle (eğer gönderilmişse)
       if (Array.isArray(body.gallery)) {
         // Mevcut galeri öğelerini sil
-        await client.query('DELETE FROM room_gallery WHERE room_id = $1', [id]);
+        await tx.roomGallery.deleteMany({
+          where: { roomId: id }
+        });
         
         // Yeni galeri öğelerini ekle
-        for (let i = 0; i < body.gallery.length; i++) {
-          // UUID oluştur - NOT NULL constraint için
-          const galleryItemId = randomUUID();
-          
-          const galleryQuery = `
-            INSERT INTO room_gallery (id, room_id, image_url, order_number)
-            VALUES ($1, $2, $3, $4)
-          `;
-          
-          await client.query(galleryQuery, [galleryItemId, id, body.gallery[i], i + 1]);
+        const galleryItems = body.gallery.map((url, index) => ({
+          id: crypto.randomUUID(),
+          roomId: id,
+          imageUrl: url,
+          orderNumber: index + 1
+        }));
+        
+        // Toplu ekleme
+        if (galleryItems.length > 0) {
+          await tx.roomGallery.createMany({
+            data: galleryItems
+          });
         }
       }
       
-      // Transaction'ı tamamla
-      await client.query('COMMIT');
-      
-      // WebSocket bildirimi gönder
-      notifyRoomsUpdated();
-      
       // Güncellenmiş odayı getir
-      const getQuery = `
-        SELECT 
-          r.id, 
-          r.name_tr as "nameTR", 
-          r.name_en as "nameEN", 
-          r.description_tr as "descriptionTR", 
-          r.description_en as "descriptionEN", 
-          r.main_image_url as image, 
-          r.price_tr as "priceTR", 
-          r.price_en as "priceEN", 
-          r.capacity, 
-          r.size, 
-          r.features_tr as "featuresTR", 
-          r.features_en as "featuresEN", 
-          r.type, 
-          r.room_type_id as "roomTypeId",
-          r.active, 
-          r.order_number as order,
-          COALESCE(
-            (SELECT json_agg(image_url ORDER BY order_number ASC)
-             FROM room_gallery
-             WHERE room_id = r.id), 
-            '[]'::json
-          ) as gallery
-        FROM rooms r
-        WHERE r.id = $1
-      `;
-      
-      const finalResult = await executeQuery(getQuery, [id]);
-      
-      return NextResponse.json({
-        success: true,
-        data: finalResult.rows[0],
-        message: 'Oda başarıyla güncellendi'
+      const finalRoom = await tx.room.findUnique({
+        where: { id },
+        include: {
+          gallery: {
+            orderBy: { orderNumber: 'asc' },
+            select: { imageUrl: true }
+          }
+        }
       });
-    } catch (error) {
-      // Hata durumunda geri al
-      await client.query('ROLLBACK');
-      console.error('SQL Hatası:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
+      
+      // Galeri görsellerini diziye dönüştür
+      const galleryImages = finalRoom.gallery.map(item => item.imageUrl);
+      
+      // API yanıtı için veriyi formatla
+      return {
+        id: finalRoom.id,
+        nameTR: finalRoom.nameTR,
+        nameEN: finalRoom.nameEN,
+        descriptionTR: finalRoom.descriptionTR,
+        descriptionEN: finalRoom.descriptionEN,
+        image: finalRoom.mainImageUrl,
+        priceTR: finalRoom.priceTR,
+        priceEN: finalRoom.priceEN,
+        capacity: finalRoom.capacity,
+        size: finalRoom.size,
+        featuresTR: finalRoom.featuresTR,
+        featuresEN: finalRoom.featuresEN,
+        type: finalRoom.type,
+        roomTypeId: finalRoom.roomTypeId,
+        active: finalRoom.active,
+        order: finalRoom.orderNumber,
+        gallery: galleryImages
+      };
+    });
+    
+    // WebSocket bildirimi gönder
+    notifyRoomsUpdated();
+    
+    return NextResponse.json({
+      success: true,
+      data: result,
+      message: 'Oda başarıyla güncellendi'
+    });
   } catch (error) {
     console.error('Oda güncelleme hatası:', error);
     return NextResponse.json(
       { success: false, message: `Oda güncellenirken bir hata oluştu: ${error.message}` },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -330,69 +259,63 @@ export async function DELETE(
   try {
     const id = params.id;
     
-    // Transaction başlat
-    const client = await (await executeQuery('BEGIN')).client;
-    
-    try {
+    // Transaction kullanarak silme
+    await prisma.$transaction(async (tx) => {
       // Odanın var olup olmadığını kontrol et
-      const checkQuery = `
-        SELECT * FROM rooms 
-        WHERE id = $1
-      `;
+      const existingRoom = await tx.room.findUnique({
+        where: { id }
+      });
       
-      const checkResult = await client.query(checkQuery, [id]);
+      if (!existingRoom) {
+        throw new Error('Silinecek oda bulunamadı');
+      }
       
-      if (checkResult.rows.length === 0) {
-        await client.query('ROLLBACK');
+      // Önce odaya ait galeri öğelerini sil
+      await tx.roomGallery.deleteMany({
+        where: { roomId: id }
+      });
+    
+      // Odayı sil
+      await tx.room.delete({
+        where: { id }
+      });
+      
+      // Diğer odaların sıra numaralarını güncelle
+      const remainingRooms = await tx.room.findMany({
+        orderBy: { orderNumber: 'asc' }
+      });
+      
+      // Her oda için sıra numarasını güncelle
+      for (let i = 0; i < remainingRooms.length; i++) {
+        await tx.room.update({
+          where: { id: remainingRooms[i].id },
+          data: { orderNumber: i + 1 }
+        });
+      }
+    });
+    
+    // WebSocket bildirimi gönder
+    notifyRoomsUpdated();
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Oda başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Oda silme hatası:', error);
+    
+    if (error.message === 'Silinecek oda bulunamadı') {
       return NextResponse.json(
-          { success: false, message: 'Silinecek oda bulunamadı' },
+        { success: false, message: 'Silinecek oda bulunamadı' },
         { status: 404 }
       );
     }
-      
-      // Önce odaya ait galeri öğelerini sil
-      await client.query('DELETE FROM room_gallery WHERE room_id = $1', [id]);
     
-    // Odayı sil
-      await client.query('DELETE FROM rooms WHERE id = $1', [id]);
-      
-      // Sıra numaralarını güncelle
-      const reorderQuery = `
-        WITH ranked AS (
-          SELECT id, ROW_NUMBER() OVER (ORDER BY order_number) as new_order
-          FROM rooms
-        )
-        UPDATE rooms
-        SET order_number = ranked.new_order,
-            updated_at = CURRENT_TIMESTAMP
-        FROM ranked
-        WHERE rooms.id = ranked.id
-      `;
-      
-      await client.query(reorderQuery);
-      
-      // Transaction'ı tamamla
-      await client.query('COMMIT');
-      
-      // WebSocket bildirimi gönder
-      notifyRoomsUpdated();
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Oda başarıyla silindi'
-      });
-    } catch (error) {
-      // Hata durumunda geri al
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Oda silme hatası:', error);
     return NextResponse.json(
       { success: false, message: 'Oda silinirken bir hata oluştu' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }

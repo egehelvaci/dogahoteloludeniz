@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../../../../../lib/db';
+import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated, notifyGalleryUpdated } from '../../../websocket/route';
-import { randomUUID } from 'crypto';  // UUID üreteci import ediyoruz
+
+// Prisma istemcisi oluşturalım
+const prisma = new PrismaClient();
 
 // Define a basic interface for Room items based on usage
 interface RoomItem {
@@ -20,34 +22,29 @@ export async function GET(
     const id = params.id;
     
     // Odayı veritabanından getir
-    const roomQuery = `
-      SELECT * FROM rooms 
-      WHERE id = $1
-    `;
+    const room = await prisma.room.findUnique({
+      where: { id },
+      select: {
+        mainImageUrl: true,
+        gallery: {
+          select: { imageUrl: true },
+          orderBy: { orderNumber: 'asc' }
+        }
+      }
+    });
     
-    const roomResult = await executeQuery(roomQuery, [id]);
-    
-    if (roomResult.rows.length === 0) {
+    if (!room) {
       return NextResponse.json(
         { success: false, message: 'Oda bulunamadı' },
         { status: 404 }
       );
     }
     
-    // Odanın galerisini getir
-    const galleryQuery = `
-      SELECT * FROM room_gallery
-      WHERE room_id = $1
-      ORDER BY order_number ASC
-    `;
-    
-    const galleryResult = await executeQuery(galleryQuery, [id]);
-    
     return NextResponse.json({
       success: true,
       data: {
-        mainImage: roomResult.rows[0].main_image_url,
-        gallery: galleryResult.rows.map(item => item.image_url)
+        mainImage: room.mainImageUrl,
+        gallery: room.gallery.map(item => item.imageUrl)
       }
     });
   } catch (error) {
@@ -56,6 +53,8 @@ export async function GET(
       { success: false, message: 'Galeri verisi alınamadı' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -87,14 +86,11 @@ export async function PUT(
     }
 
     // Odayı veritabanından getir
-    const roomQuery = `
-      SELECT * FROM rooms 
-      WHERE id = $1
-    `;
+    const room = await prisma.room.findUnique({
+      where: { id }
+    });
     
-    const roomResult = await executeQuery(roomQuery, [id]);
-    
-    if (roomResult.rows.length === 0) {
+    if (!room) {
       return NextResponse.json(
         { success: false, message: 'Oda bulunamadı' },
         { status: 404 }
@@ -109,80 +105,67 @@ export async function PUT(
       );
     }
     
-    // İşlemler için transaction başlat
-    const client = await (await executeQuery('BEGIN')).client;
-    
-    try {
+    // Transaction kullanarak güncelleme yap
+    const updatedRoom = await prisma.$transaction(async (tx) => {
       // Ana görseli güncelle
       if (mainImageUrl) {
-        const updateRoomQuery = `
-          UPDATE rooms 
-          SET main_image_url = $1
-          WHERE id = $2
-        `;
-        
-        await client.query(updateRoomQuery, [mainImageUrl, id]);
+        await tx.room.update({
+          where: { id },
+          data: { mainImageUrl }
+        });
       }
       
       // Mevcut galeri öğelerini sil
-      const deleteGalleryQuery = `
-        DELETE FROM room_gallery
-        WHERE room_id = $1
-      `;
-      
-      await client.query(deleteGalleryQuery, [id]);
+      await tx.roomGallery.deleteMany({
+        where: { roomId: id }
+      });
       
       // Yeni galeri öğelerini ekle
-      for (let i = 0; i < galleryUrls.length; i++) {
-        const galleryItemId = randomUUID(); // Her galeri öğesi için benzersiz UUID
+      if (galleryUrls.length > 0) {
+        const galleryItems = galleryUrls.map((url, index) => ({
+          id: crypto.randomUUID(),
+          roomId: id,
+          imageUrl: url,
+          orderNumber: index + 1
+        }));
         
-        const insertGalleryQuery = `
-          INSERT INTO room_gallery (id, room_id, image_url, order_number)
-          VALUES ($1, $2, $3, $4)
-        `;
-        
-        await client.query(insertGalleryQuery, [galleryItemId, id, galleryUrls[i], i + 1]);
+        await tx.roomGallery.createMany({
+          data: galleryItems
+        });
       }
       
-      // Transaction'ı tamamla
-      await client.query('COMMIT');
-      
-      // WebSocket bildirimi gönder
-      notifyRoomsUpdated();
-      notifyGalleryUpdated();
-      
-      // Güncellenmiş galeriyi getir
-      const updatedQuery = `
-        SELECT * FROM room_gallery
-        WHERE room_id = $1
-        ORDER BY order_number ASC
-      `;
-      
-      const updatedGallery = await executeQuery(updatedQuery, [id]);
-      const updatedRoom = await executeQuery('SELECT * FROM rooms WHERE id = $1', [id]);
-      
-      return NextResponse.json({
-        success: true,
-        data: {
-          mainImage: updatedRoom.rows[0].main_image_url,
-          gallery: updatedGallery.rows.map(item => item.image_url)
-        },
-        message: 'Galeri başarıyla güncellendi'
+      // Güncellenmiş odayı getir
+      return await tx.room.findUnique({
+        where: { id },
+        include: {
+          gallery: {
+            orderBy: { orderNumber: 'asc' },
+            select: { imageUrl: true }
+          }
+        }
       });
-    } catch (error) {
-      // Hata durumunda rollback yap
-      await client.query('ROLLBACK');
-      console.error('Transaction hatası:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
+    
+    // WebSocket bildirimi gönder
+    notifyRoomsUpdated();
+    notifyGalleryUpdated();
+    
+    return NextResponse.json({
+      success: true,
+      data: {
+        mainImage: updatedRoom.mainImageUrl,
+        gallery: updatedRoom.gallery.map(item => item.imageUrl)
+      },
+      message: 'Galeri başarıyla güncellendi'
+    });
   } catch (error) {
     console.error('Galeri güncelleme hatası:', error);
     return NextResponse.json(
       { success: false, message: 'Galeri güncellenirken bir hata oluştu' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -204,14 +187,11 @@ export async function POST(
     }
 
     // Odanın var olup olmadığını kontrol et
-    const roomQuery = `
-      SELECT * FROM rooms 
-      WHERE id = $1
-    `;
+    const room = await prisma.room.findUnique({
+      where: { id }
+    });
     
-    const roomResult = await executeQuery(roomQuery, [id]);
-    
-    if (roomResult.rows.length === 0) {
+    if (!room) {
       return NextResponse.json(
         { success: false, message: 'Oda bulunamadı' },
         { status: 404 }
@@ -219,14 +199,14 @@ export async function POST(
     }
     
     // Görsel zaten galeriye eklenmiş mi kontrol et
-    const checkQuery = `
-      SELECT * FROM room_gallery
-      WHERE room_id = $1 AND image_url = $2
-    `;
+    const existingImage = await prisma.roomGallery.findFirst({
+      where: {
+        roomId: id,
+        imageUrl: imagePath
+      }
+    });
     
-    const checkResult = await executeQuery(checkQuery, [id, imagePath]);
-    
-    if (checkResult.rows.length > 0) {
+    if (existingImage) {
       return NextResponse.json({
         success: false,
         message: 'Bu görsel zaten galeride mevcut'
@@ -234,29 +214,19 @@ export async function POST(
     }
     
     // Toplam galeri öğesi sayısını bul
-    const countQuery = `
-      SELECT COUNT(*) as count FROM room_gallery
-      WHERE room_id = $1
-    `;
+    const galleryCount = await prisma.roomGallery.count({
+      where: { roomId: id }
+    });
     
-    const countResult = await executeQuery(countQuery, [id]);
-    const orderNumber = parseInt(countResult.rows[0].count) + 1;
-    
-    // Görseli galeriye ekle - UUID ile
-    const galleryItemId = randomUUID(); // Benzersiz UUID
-    
-    const insertQuery = `
-      INSERT INTO room_gallery (id, room_id, image_url, order_number)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    
-    const insertResult = await executeQuery(insertQuery, [
-      galleryItemId, 
-      id, 
-      imagePath, 
-      orderNumber
-    ]);
+    // Görseli galeriye ekle
+    const newGalleryItem = await prisma.roomGallery.create({
+      data: {
+        id: crypto.randomUUID(),
+        roomId: id,
+        imageUrl: imagePath,
+        orderNumber: galleryCount + 1
+      }
+    });
     
     // WebSocket bildirimi gönder
     notifyRoomsUpdated();
@@ -264,7 +234,7 @@ export async function POST(
     
     return NextResponse.json({
       success: true,
-      data: insertResult.rows[0],
+      data: newGalleryItem,
       message: 'Görsel galeriye eklendi'
     });
   } catch (error) {
@@ -273,6 +243,8 @@ export async function POST(
       { success: false, message: 'Görsel eklenirken bir hata oluştu' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -294,14 +266,11 @@ export async function DELETE(
     }
     
     // Odanın var olup olmadığını kontrol et
-    const roomQuery = `
-      SELECT * FROM rooms 
-      WHERE id = $1
-    `;
+    const room = await prisma.room.findUnique({
+      where: { id }
+    });
     
-    const roomResult = await executeQuery(roomQuery, [id]);
-    
-    if (roomResult.rows.length === 0) {
+    if (!room) {
       return NextResponse.json(
         { success: false, message: 'Oda bulunamadı' },
         { status: 404 }
@@ -309,15 +278,14 @@ export async function DELETE(
     }
     
     // Görseli sil
-    const deleteQuery = `
-      DELETE FROM room_gallery
-      WHERE room_id = $1 AND image_url = $2
-      RETURNING *
-    `;
+    const deletedImage = await prisma.roomGallery.deleteMany({
+      where: {
+        roomId: id,
+        imageUrl: imagePath
+      }
+    });
     
-    const deleteResult = await executeQuery(deleteQuery, [id, imagePath]);
-    
-    if (deleteResult.rows.length === 0) {
+    if (deletedImage.count === 0) {
       return NextResponse.json({
         success: false,
         message: 'Görsel bulunamadı'
@@ -325,19 +293,21 @@ export async function DELETE(
     }
     
     // Kalan görsellerin sıra numaralarını yeniden düzenle
-    const reorderQuery = `
-      WITH numbered AS (
-        SELECT id, ROW_NUMBER() OVER (ORDER BY order_number) as new_order
-        FROM room_gallery
-        WHERE room_id = $1
-      )
-      UPDATE room_gallery g
-      SET order_number = n.new_order
-      FROM numbered n
-      WHERE g.id = n.id AND g.room_id = $1
-    `;
-    
-    await executeQuery(reorderQuery, [id]);
+    await prisma.$transaction(async (tx) => {
+      // Geriye kalan görselleri sırala
+      const remainingImages = await tx.roomGallery.findMany({
+        where: { roomId: id },
+        orderBy: { orderNumber: 'asc' }
+      });
+      
+      // Her görsel için sıra numarasını güncelle
+      for (let i = 0; i < remainingImages.length; i++) {
+        await tx.roomGallery.update({
+          where: { id: remainingImages[i].id },
+          data: { orderNumber: i + 1 }
+        });
+      }
+    });
     
     // WebSocket bildirimi gönder
     notifyRoomsUpdated();
@@ -353,5 +323,7 @@ export async function DELETE(
       { success: false, message: 'Görsel kaldırılırken bir hata oluştu' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
