@@ -206,6 +206,7 @@ export default function ServiceGalleryPage({ params }: PageProps) {
   const saveChanges = async () => {
     try {
       setUploading(true);
+      setMessage(null);
       
       // Geçersiz URL'leri filtrele
       const validImages = images.filter(url => 
@@ -225,7 +226,21 @@ export default function ServiceGalleryPage({ params }: PageProps) {
       // İlk görsel (index 0) ana görsel olarak ayarlanır
       const mainImage = validImages[0];
       
-      const response = await fetch(`/api/admin/services/${id}/gallery?t=${Date.now()}`, {
+      // Servis ID'sini temizle (olası boşlukları kaldır)
+      const cleanId = id.trim();
+      
+      console.log('Galeri güncellemesi gönderiliyor:', {
+        serviceId: cleanId,
+        imageCount: validImages.length,
+        mainImage: mainImage ? mainImage.slice(0, 30) + '...' : 'Yok' // Ana görsel URL'sinin başını logla
+      });
+      
+      // HTTP isteğini gönder
+      const timestamp = Date.now(); // Önbelleği engellemek için
+      const requestUrl = `/api/admin/services/${cleanId}/gallery?t=${timestamp}`;
+      console.log('İstek URL:', requestUrl);
+      
+      const response = await fetch(requestUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -234,12 +249,37 @@ export default function ServiceGalleryPage({ params }: PageProps) {
           images: validImages,
           image: mainImage // Ana görsel olarak ilk görseli belirtiyoruz
         }),
+        next: { revalidate: 0 } // Server tarafında önbelleğe almayı engelle
       });
+
+      // Yanıtın metin içeriğini önce alıp 
+      const responseText = await response.text();
+      console.log("API Yanıtı:", responseText);
+
+      if (!response.ok) {
+        console.error('Galeri güncelleme HTTP hatası:', response.status, response.statusText);
+        
+        try {
+          // JSON formatında hata yanıtı olup olmadığını kontrol et
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.message || errorData.error || errorData.detail || 'Veritabanı güncellenirken bir hata oluştu');
+        } catch (e) {
+          // JSON değilse doğrudan metin olarak kullan
+          throw new Error(`Güncelleme hatası: ${responseText || response.statusText}`);
+        }
+      }
       
-      const result = await response.json();
+      // Yanıt metnini JSON'a dönüştür
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('API yanıtı JSON formatında değil:', e);
+        throw new Error('API yanıtı işlenemedi');
+      }
       
       if (!result.success) {
-        throw new Error(result.error || 'Bir hata oluştu');
+        throw new Error(result.message || result.error || result.detail || 'Veritabanı güncellenirken bir hata oluştu');
       }
       
       console.log("Galeri API yanıtı:", result);
@@ -257,8 +297,8 @@ export default function ServiceGalleryPage({ params }: PageProps) {
       console.error('Galeri kaydetme hatası:', error);
       setMessage({
         text: lang === 'tr' 
-          ? `Hata: ${error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'}` 
-          : `Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
+          ? `Veritabanı güncellenirken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'}` 
+          : `Error updating database: ${error instanceof Error ? error.message : 'An unknown error occurred'}`,
         type: 'error'
       });
     } finally {

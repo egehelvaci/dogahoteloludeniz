@@ -16,7 +16,8 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/client-s3": "^3.317.0",
+    "@aws-sdk/s3-request-presigner": "^3.317.0",
     "@fontsource/inter": "^5.2.5",
     "@fontsource/montserrat": "^5.2.5",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",

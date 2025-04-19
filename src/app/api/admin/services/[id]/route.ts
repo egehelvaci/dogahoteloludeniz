@@ -20,7 +20,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Next.js 15'te parametreler Promise olarak geliyor
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
     
     const query = `
       SELECT 

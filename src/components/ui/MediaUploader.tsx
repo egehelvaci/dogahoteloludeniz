@@ -92,103 +92,57 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
       setPreviewUrl(objectUrl);
       setFileType(isVideo ? 'video' : 'image');
       
-      // Video ise thumbnail oluştur
-      let thumbnailFile: File | null = null;
+      // Video ise thumbnail oluştur (opsiyonel)
       let thumbnailUrl: string = '';
-      
       if (isVideo) {
         try {
           console.log(`Video için thumbnail oluşturuluyor: ${file.name}`);
-          // Video'dan thumbnail oluştur
           thumbnailUrl = await generateVideoThumbnail(file);
-          
-          // Thumbnail başarıyla oluşturuldu mu kontrol et
-          if (thumbnailUrl && thumbnailUrl.startsWith('data:image/')) {
-            // Thumbnail'i dosyaya dönüştür
-            const thumbFilename = `thumbnail_${new Date().getTime()}.jpg`;
-            thumbnailFile = dataURLtoFile(thumbnailUrl, thumbFilename);
-            console.log(`Video thumbnail oluşturuldu: ${thumbFilename}, boyut: ${thumbnailFile.size} bytes`);
-          } else {
-            console.warn("Oluşturulan thumbnail geçerli değil, atlanıyor");
-          }
         } catch (thumbError) {
           console.error("Video thumbnail oluşturma hatası:", thumbError);
           // Thumbnail oluşturulamazsa devam et
         }
       }
       
+      // FormData ile dosya yükleme
+      console.log('FormData ile yükleme başlatılıyor...');
+      
       // FormData oluştur
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', folder);
       
-      // Eğer thumbnail oluşturulduysa ekle
-      if (thumbnailFile && thumbnailFile.size > 0) {
-        console.log(`Thumbnail eklenecek: ${thumbnailFile.name}, boyut: ${thumbnailFile.size} bytes`);
-        formData.append('thumbnailFile', thumbnailFile);
-      }
-      
-      console.log('Dosya yükleniyor:', file.name, 'klasör:', folder, 'thumbnail:', !!thumbnailFile);
-      
-      // API'ye yükle
-      const response = await fetch(apiEndpoint, {
+      // API'ye yolla
+      const uploadResponse = await fetch(apiEndpoint, {
         method: 'POST',
         body: formData,
       });
       
-      // Yanıtı önce text olarak al
-      const responseText = await response.text();
-      console.log('API yanıt (raw):', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
-      
-      // JSON'a çevirmeyi dene
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (error) {
-        console.error('JSON ayrıştırma hatası:', error);
-        throw new Error(`Geçersiz API yanıtı: ${responseText.substring(0, 100)}...`);
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Yükleme hatası:', errorText);
+        throw new Error(`Dosya yüklenemedi: ${uploadResponse.status}`);
       }
       
-      // API yanıt formatını kontrol et
-      if (!response.ok || !result.success) {
-        const errorMessage = result.message || 'Dosya yüklenirken bir hata oluştu';
-        console.error('Yükleme hatası (API):', { 
-          status: response.status,
-          statusText: response.statusText,
-          result
-        });
-        throw new Error(errorMessage);
+      const responseData = await uploadResponse.json();
+      
+      if (!responseData.success) {
+        throw new Error(responseData.message || 'Yükleme başarısız oldu');
       }
       
-      // URL kontrolü
-      if (!result.url) {
-        console.error('URL bilgisi eksik (API):', result);
-        throw new Error('Dosya yüklendi ancak URL bilgisi alınamadı');
-      }
-      
-      // Dosya bilgileri
-      const fileName = result.fileName || '';
-      const fileUrl = result.url;
-      const fileTypeFromResponse = result.fileType || (isVideo ? 'video' : 'image');
-      const thumbUrl = result.thumbnailUrl || '';
-      
-      console.log('Dosya başarıyla yüklendi:', {
-        url: fileUrl,
-        fileType: fileTypeFromResponse,
-        thumbnailUrl: thumbUrl || thumbnailUrl || 'Yok'
-      });
+      console.log('Dosya başarıyla yüklendi:', responseData);
       
       // Başarılı yükleme - handler'ı çağır
       onUpload({
-        url: fileUrl,
-        fileId: fileName,
-        fileType: fileTypeFromResponse,
-        thumbnailUrl: thumbUrl || thumbnailUrl || undefined
+        url: responseData.url,
+        fileId: responseData.fileId || file.name,
+        fileType: isVideo ? 'video' : 'image',
+        thumbnailUrl: thumbnailUrl || undefined
       });
       
       // Önizleme URL'sini güncelle
-      setPreviewUrl(fileUrl);
-      setThumbnailUrl(thumbUrl || thumbnailUrl || undefined);
+      setPreviewUrl(responseData.url);
+      setThumbnailUrl(thumbnailUrl || undefined);
     } catch (error) {
       console.error('Yükleme hatası:', error);
       setIsError(true);

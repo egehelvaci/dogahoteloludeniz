@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '../../../lib/db';
+import { executeQuery, beginTransaction } from '../../../lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
 // Veritabanı sorgu sonucu tipi
@@ -13,6 +13,8 @@ interface QueryResult<T> {
 interface DbClient {
   query: (query: string, params?: unknown[]) => Promise<any>;
   release: () => void;
+  commit: () => Promise<void>;
+  rollback: () => Promise<void>;
 }
 
 // Slider veri tipi
@@ -109,9 +111,9 @@ export async function POST(request: Request) {
       
       console.log('Transaction başlatılıyor...');
       
-      // Transaction başlat - doğru kullanım
-      const beginResult = await executeQuery('BEGIN') as any;
-      client = beginResult.client as DbClient;
+      // Transaction başlat - geliştirilmiş yöntem
+      const beginResult = await beginTransaction();
+      client = beginResult.client;
       
       // Client kontrolü
       if (!client) {
@@ -168,7 +170,7 @@ export async function POST(request: Request) {
         console.log('Insert başarılı, transaction tamamlanıyor...');
         
         // Transaction'ı tamamla
-        await client.query('COMMIT');
+        await client.commit();
         
         console.log('Transaction tamamlandı');
         
@@ -197,7 +199,7 @@ export async function POST(request: Request) {
       } catch (queryError) {
         // Sorgu hatası durumunda rollback yap
         console.error('Sorgu hatası, rollback yapılıyor:', queryError);
-        await client.query('ROLLBACK');
+        await client.rollback();
         throw queryError; // Hatayı üst bloğa ilet
       }
     } catch (dbError) {
@@ -205,7 +207,7 @@ export async function POST(request: Request) {
       // Client varsa ve hata olduysa rollback yapmayı dene
       if (client) {
         try {
-          await client.query('ROLLBACK');
+          await client.rollback();
         } catch (rollbackError) {
           console.error('Rollback hatası:', rollbackError);
         }
@@ -222,17 +224,6 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
-  } finally {
-    // Client'ı serbest bırak
-    if (client) {
-      try {
-        console.log('Client serbest bırakılıyor...');
-        client.release();
-        console.log('Client serbest bırakıldı');
-      } catch (releaseError) {
-        console.error('Client release hatası:', releaseError);
-      }
-    }
   }
 }
 
@@ -326,7 +317,7 @@ export async function PUT(request: Request) {
         console.log('Güncelleme başarılı, transaction tamamlanıyor...');
         
         // Transaction'ı tamamla
-        await client.query('COMMIT');
+        await client.commit();
         
         console.log('Transaction tamamlandı');
         
@@ -355,7 +346,7 @@ export async function PUT(request: Request) {
       } catch (queryError) {
         // Sorgu hatası durumunda rollback yap
         console.error('Sorgu hatası, rollback yapılıyor:', queryError);
-        await client.query('ROLLBACK');
+        await client.rollback();
         throw queryError; // Hatayı üst bloğa ilet
       }
     } catch (dbError) {
@@ -364,7 +355,7 @@ export async function PUT(request: Request) {
       // Client varsa ve hata olduysa rollback yapmayı dene
       if (client) {
         try {
-          await client.query('ROLLBACK');
+          await client.rollback();
         } catch (rollbackError) {
           console.error('Rollback hatası:', rollbackError);
         }
@@ -382,17 +373,6 @@ export async function PUT(request: Request) {
       },
       { status: 500 }
     );
-  } finally {
-    // Client'ı serbest bırak
-    if (client) {
-      try {
-        console.log('Client serbest bırakılıyor...');
-        client.release();
-        console.log('Client serbest bırakıldı');
-      } catch (releaseError) {
-        console.error('Client release hatası:', releaseError);
-      }
-    }
   }
 }
 
@@ -485,7 +465,7 @@ export async function DELETE(request: Request) {
         console.log('Sıralama yeniden düzenlendi, transaction tamamlanıyor...');
         
         // Transaction'ı tamamla
-        await client.query('COMMIT');
+        await client.commit();
         console.log('Transaction tamamlandı');
         
         return NextResponse.json({
@@ -496,7 +476,7 @@ export async function DELETE(request: Request) {
       } catch (queryError) {
         // Sorgu hatası durumunda rollback yap
         console.error('Sorgu hatası, rollback yapılıyor:', queryError);
-        await client.query('ROLLBACK');
+        await client.rollback();
         throw queryError; // Hatayı üst bloğa ilet
       }
     } catch (dbError) {
@@ -505,7 +485,7 @@ export async function DELETE(request: Request) {
       // Client varsa ve hata olduysa rollback yapmayı dene
       if (client) {
         try {
-          await client.query('ROLLBACK');
+          await client.rollback();
         } catch (rollbackError) {
           console.error('Rollback hatası:', rollbackError);
         }
@@ -523,16 +503,5 @@ export async function DELETE(request: Request) {
       },
       { status: 500 }
     );
-  } finally {
-    // Client'ı serbest bırak
-    if (client) {
-      try {
-        console.log('Client serbest bırakılıyor...');
-        client.release();
-        console.log('Client serbest bırakıldı');
-      } catch (releaseError) {
-        console.error('Client release hatası:', releaseError);
-      }
-    }
   }
 }

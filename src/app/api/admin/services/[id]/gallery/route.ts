@@ -221,25 +221,26 @@ export async function DELETE(
 
 // PUT - Servis galerisini güncelle
 export async function PUT(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   // Client'ı burada tanımlayalım ki her durumda release edilebilsin
   let client = null;
 
   try {
-    const serviceId = params.id;
+    // Next.js 15'te parametreler Promise olarak geliyor, önce çözümlememiz gerekiyor
+    const resolvedParams = await params;
+    const serviceId = resolvedParams.id;
     console.log("İşlenecek servis ID:", serviceId);
     
     let body;
     try {
       body = await request.json();
-      console.log("İstek gövdesi:", body);
+      console.log("İstek gövdesi alındı ve işleniyor");
       
       console.log('Servis galeri güncelleme isteği:', { 
         serviceId, 
-        mainImage: body.image,
-        imagesCount: body.images?.length || 0 
+        resimSayisi: body.images?.length || 0 
       });
     } catch (err) {
       console.error('İstek gövdesi alınamadı:', err);
@@ -287,135 +288,161 @@ export async function PUT(
     
     // Ana görsel seçenekleri
     const mainImage = body.image || validImages[0];
-    console.log("Seçilen ana görsel:", mainImage);
+    console.log("Seçilen ana görsel var");
     
     // Veritabanı kontrolleri
     try {
+      // Gelen ID'yi temizle (olası boşluk veya özel karakterleri kaldır)
+      const cleanServiceId = serviceId.trim();
+      console.log("Temizlenmiş servis ID:", cleanServiceId);
+      
       // Servisi kontrol et
+      console.log("Servis arama sorgusu yapılıyor...");
+      console.log("SQL sorgusu: SELECT * FROM services WHERE id = $1");
+      console.log("Parametre:", cleanServiceId);
+      
+      // Sorguyu executeQuery ile çalıştır
       const serviceCheck = await executeQuery(
-        "SELECT id FROM services WHERE id = $1",
-        [serviceId]
+        "SELECT * FROM services WHERE id = $1", 
+        [cleanServiceId]
       );
       
-      if (serviceCheck.rows.length === 0) {
+      // Sonucu önce string olarak alalım
+      const serviceResultString = JSON.stringify(serviceCheck);
+      console.log("Servis sorgu ham sonucu:", serviceResultString);
+      
+      // Sonucu JSON olarak çözümleyelim - bu daha güvenilir sonuç verecek
+      let serviceData = [];
+      
+      try {
+        // Eğer direkt bir dizi döndüyse
+        if (Array.isArray(serviceCheck)) {
+          serviceData = serviceCheck;
+          console.log("Direkt dizi sonucu alındı, uzunluk:", serviceData.length);
+        } 
+        // Ya da bir dizi içeren bir nesne döndüyse
+        else if (serviceCheck && Array.isArray(serviceCheck.rows)) {
+          serviceData = serviceCheck.rows;
+          console.log("rows dizisi sonucu alındı, uzunluk:", serviceData.length);
+        }
+        // Eğer string bir JSON sonucu geldiyse
+        else if (serviceResultString && serviceResultString.startsWith('[') && serviceResultString.includes('"id"')) {
+          // String JSON olarak döndüyse parse et
+          try {
+            const parsedData = JSON.parse(serviceResultString);
+            if (Array.isArray(parsedData)) {
+              serviceData = parsedData;
+            }
+            console.log("JSON parse edildi, uzunluk:", serviceData.length);
+          } catch (parseErr) {
+            console.error("JSON parse hatası:", parseErr);
+          }
+        }
+      } catch (e) {
+        console.error("Veri yapısı işleme hatası:", e);
+      }
+      
+      console.log("Son veri yapısı:", typeof serviceData, "uzunluk:", serviceData.length);
+      
+      // Servis bulunamadı mı?
+      if (!serviceData || serviceData.length === 0) {
+        console.log("Servis bulunamadı, tüm servisleri listeliyorum...");
+        
+        // Tüm servisleri listele (DEBUG amaçlı)
+        const allServices = await executeQuery("SELECT id, title_tr FROM services LIMIT 10");
+        let allServicesList = [];
+        
+        if (Array.isArray(allServices)) {
+          allServicesList = allServices;
+        } else if (allServices && Array.isArray(allServices.rows)) {
+          allServicesList = allServices.rows;
+        }
+        
+        console.log("Sistemdeki servisler:", JSON.stringify(allServicesList));
+        
         return NextResponse.json(
           { error: 'Servis bulunamadı', success: false },
           { status: 404 }
         );
       }
       
-      // Transaction başlat
-      const beginResult = await executeQuery('BEGIN');
-      client = beginResult.client;
+      // Servis bulundu!
+      const foundService = serviceData[0];
+      console.log("Servis bulundu:", JSON.stringify(foundService));
       
+      // Direkt sorguları çalıştır - TRANSACTION OLMADAN
+      console.log("İşlemlere başlanıyor (transaction kullanılmıyor)...");
+
       try {
-        console.log("Transaction başladı");
+        // 1. Önce ana görseli güncelle (services tablosunda main_image_url)
+        const mainImageToUpdate = validImages[0];
+        console.log(`Ana görsel güncelleniyor: ${mainImageToUpdate.substr(0, 30)}...`);
         
-        // 1. Önce ana görseli güncelle
-        // Gönderilen ana görsel veya ilk görsel kullanılır
-        const mainImageToUpdate = mainImage || validImages[0];
-        console.log(`Ana görsel güncelleniyor: ${mainImageToUpdate}`);
-        
-        // Önce güncel ana görsel durumunu logla
-        const currentMainImage = await client.query(
-          `SELECT main_image_url FROM services WHERE id = $1`,
-          [serviceId]
-        );
-        
-        console.log(`Mevcut ana görsel: ${JSON.stringify(currentMainImage.rows[0])}`);
-        
-        // Ana görseli güncelle ve sonuçları debug logu ile göster
-        try {
-          const updateMainImageQuery = `
-            UPDATE services
-            SET 
-              main_image_url = $1,
+        // Ana görseli update et
+        const updateSQL = `
+          UPDATE services
+          SET main_image_url = $1, 
               updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-            RETURNING id, main_image_url
-          `;
-          
-          const mainImageResult = await client.query(updateMainImageQuery, [mainImageToUpdate, serviceId]);
-          if (mainImageResult.rows.length === 0) {
-            throw new Error('Ana görsel güncellenemedi');
-          }
-          
-          console.log("Ana görsel güncellendi:", { 
-            serviceId, 
-            mainImage: mainImageToUpdate,
-            result: mainImageResult.rows[0]
-          });
-        } catch (updateError) {
-          console.error("Ana görsel güncelleme hatası:", updateError);
-          throw updateError;
-        }
-        
-        // 2. Sonra service_gallery tablosundaki eski kayıtları temizle
-        const clearGalleryQuery = `
-          DELETE FROM service_gallery
-          WHERE service_id = $1
+          WHERE id = $2
+          RETURNING id, main_image_url
         `;
         
-        await client.query(clearGalleryQuery, [serviceId]);
-        console.log("Eski galeri kayıtları temizlendi");
+        const updateResult = await executeQuery(updateSQL, [mainImageToUpdate, cleanServiceId]);
+        console.log("Ana görsel güncelleme sonucu:", updateResult.rows);
         
-        // 3. Şimdi yeni görselleri ekle
+        // 2. Eski galeri görsellerini temizle
+        console.log("Eski galeri kayıtları temizleniyor...");
+        const deleteSQL = `DELETE FROM service_gallery WHERE service_id = $1`;
+        const deleteResult = await executeQuery(deleteSQL, [cleanServiceId]);
+        console.log("Silinen kayıt sayısı:", deleteResult.rowCount);
+        
+        // 3. Yeni galeri görsellerini ekle
+        console.log("Yeni görseller ekleniyor...");
+        let insertedCount = 0;
+        
         for (let i = 0; i < validImages.length; i++) {
           const imageUrl = validImages[i];
           const orderNumber = i + 1;
-          const id = uuidv4(); // Her kayıt için benzersiz bir UUID oluştur
+          const id = uuidv4();
           
-          // Burada, doğru sütun adlarını kullanıyoruz
-          const insertGalleryQuery = `
-            INSERT INTO service_gallery
-            (id, service_id, image_url, order_number, created_at)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+          const insertSQL = `
+            INSERT INTO service_gallery 
+              (id, service_id, image_url, order_number, created_at)
+            VALUES 
+              ($1, $2, $3, $4, CURRENT_TIMESTAMP)
           `;
           
-          try {
-            await client.query(insertGalleryQuery, [id, serviceId, imageUrl, orderNumber]);
-            console.log(`Görsel eklendi: ${imageUrl} (sıra: ${orderNumber}, id: ${id})`);
-          } catch (insertErr) {
-            // Hata durumunu detaylı logla
-            console.error("Görsel ekleme hatası:", insertErr);
-            console.error("Hatalı sorgu parametreleri:", { id, serviceId, imageUrl, orderNumber });
-            throw insertErr;
-          }
+          await executeQuery(insertSQL, [id, cleanServiceId, imageUrl, orderNumber]);
+          insertedCount++;
+          console.log(`Görsel #${orderNumber} eklendi`);
         }
         
-        // Transaction'ı tamamla
-        await client.query('COMMIT');
-        console.log("Transaction tamamlandı");
-        
-        // Güncel durumu kontrol et
-        const updatedService = await executeQuery(`
-          SELECT id, main_image_url FROM services WHERE id = $1
-        `, [serviceId]);
-        
-        console.log("İşlem sonrası ana görsel durumu:", updatedService.rows[0]);
+        // İşlem sonucu
+        console.log("Tüm işlemler başarıyla tamamlandı!");
+        console.log(`Güncellenen ana görsel: ${mainImageToUpdate.substr(0, 30)}...`);
+        console.log(`Eklenen görsel sayısı: ${insertedCount}`);
         
         return NextResponse.json({
           success: true,
           message: 'Servis galerisi başarıyla güncellendi',
           imageCount: validImages.length,
           mainImage: mainImageToUpdate,
-          serviceId: serviceId,
-          updatedService: updatedService.rows[0]
+          serviceId: cleanServiceId
         });
-      } catch (transactionError) {
-        // Hata durumunda geri al
-        if (client) {
-          try {
-            await client.query('ROLLBACK');
-            console.log("Transaction geri alındı");
-          } catch (rollbackError) {
-            console.error("Rollback sırasında hata:", rollbackError);
-          }
+      } catch (err) {
+        console.error("Veritabanı işlemi hatası:", err);
+        
+        let errorMessage = 'Bilinmeyen bir hata oluştu';
+        if (err instanceof Error) {
+          errorMessage = err.message;
         }
         
-        console.error("Transaction hatası:", transactionError);
-        throw transactionError; // Dış catch bloğuna fırlat
-      } 
+        return NextResponse.json({
+          success: false,
+          error: 'Veritabanı güncellenirken bir hata oluştu',
+          detail: errorMessage
+        }, { status: 500 });
+      }
     } catch (dbError) {
       console.error("Veritabanı hatası:", dbError);
       
@@ -437,16 +464,6 @@ export async function PUT(
         },
         { status: 500 }
       );
-    } finally {
-      // Client'ı serbest bırak (varsa)
-      if (client) {
-        try {
-          client.release();
-          console.log("Database client serbest bırakıldı");
-        } catch (releaseError) {
-          console.error("Client serbest bırakılırken hata:", releaseError);
-        }
-      }
     }
   } catch (error) {
     console.error("Genel hata:", error);

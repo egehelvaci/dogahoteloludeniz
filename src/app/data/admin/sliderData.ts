@@ -33,9 +33,9 @@ interface NewSliderItem {
 // API bağlantıları
 const API_URL = '/api/hero-slider';
 const REORDER_API_URL = '/api/hero-slider/reorder';
-const UPLOAD_API_URL = '/api/admin/slider/upload';
+const UPLOAD_API_URL = '/api/upload';
 
-// Medya yükleme fonksiyonu (ImageKit kullanarak)
+// Medya yükleme fonksiyonu
 export async function uploadSliderMedia(file: File): Promise<{fileUrl: string, fileId: string, fileType: string} | null> {
   try {
     console.log('Admin: Slider medyası yükleniyor');
@@ -56,12 +56,12 @@ export async function uploadSliderMedia(file: File): Promise<{fileUrl: string, f
     
     const data = await response.json();
     
-    if (data.success && data.fileUrl) {
-      console.log('Admin: Medya başarıyla yüklendi:', data.fileUrl);
+    if (data.success && data.url) {
+      console.log('Admin: Medya başarıyla yüklendi:', data.url);
       return {
-        fileUrl: data.fileUrl,
+        fileUrl: data.url,
         fileId: data.fileId || '',
-        fileType: data.fileType || (data.fileUrl.includes('.mp4') ? 'video' : 'image')
+        fileType: data.fileType || (data.url.includes('.mp4') ? 'video' : 'image')
       };
     } else {
       throw new Error('Medya yükleme yanıtı geçersiz');
@@ -629,25 +629,134 @@ function getDefaultSliderData(): SliderItem[] {
 // Slider ekleme fonksiyonu
 export const addSlider = async (data: Partial<SliderItem>): Promise<SliderItem | null> => {
   try {
-    const response = await fetch('/api/hero-slider', {
+    console.log('Slider ekleme işlemi başlatılıyor, veri:', JSON.stringify(data, null, 2));
+    
+    // Veri doğrulama
+    if (!data.titleTR || !data.titleEN) {
+      const error = 'Türkçe ve İngilizce başlık alanları zorunludur';
+      console.error('Doğrulama hatası:', error);
+      throw new Error(error);
+    }
+    
+    if (!data.image && !data.videoUrl) {
+      const error = 'En az bir görsel veya video URL\'si gereklidir';
+      console.error('Doğrulama hatası:', error);
+      throw new Error(error);
+    }
+    
+    // Veritabanına gönderilecek verinin yapısını kontrol et
+    const requestData = {
+      ...data,
+      titleTR: data.titleTR.trim(),
+      titleEN: data.titleEN.trim(),
+      subtitleTR: data.subtitleTR?.trim() || null,
+      subtitleEN: data.subtitleEN?.trim() || null,
+      descriptionTR: data.descriptionTR?.trim() || null,
+      descriptionEN: data.descriptionEN?.trim() || null,
+      image: data.image || null,
+      videoUrl: data.videoUrl || null,
+      active: data.active !== undefined ? data.active : true
+    };
+    
+    // URL oluşturma
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/api/hero-slider`;
+    const timestamp = new Date().getTime(); // Önbellekleme sorunlarını önlemek için
+    const apiUrl = `${url}?t=${timestamp}`;
+    
+    console.log(`API isteği gönderiliyor: ${apiUrl}`);
+    console.log('İstek gövdesi:', JSON.stringify(requestData, null, 2));
+    
+    // fetch isteği
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(requestData),
     });
 
+    console.log('API yanıtı durumu:', response.status, response.statusText);
+    
+    // HTTP durumu başarısızsa
     if (!response.ok) {
-      throw new Error(`API hatası: ${response.status}`);
+      let errorMessage = `API hatası: ${response.status} - ${response.statusText}`;
+      let errorDetail = '';
+      
+      try {
+        const errorData = await response.text();
+        console.error('API hata detayları (ham):', errorData);
+        
+        // JSON olarak parse etmeyi dene
+        try {
+          const errorJson = JSON.parse(errorData);
+          console.error('API hata detayları (JSON):', errorJson);
+          
+          // API'den gelen hata mesajını ve detayları ekle
+          if (errorJson.message) errorDetail = errorJson.message;
+          if (errorJson.error) errorDetail += errorJson.error ? ` (${errorJson.error})` : '';
+          
+          if (errorDetail) {
+            errorMessage += `: ${errorDetail}`;
+          }
+          
+          // Veritabanı hatası detayları
+          if (errorJson.dbError) {
+            console.error('Veritabanı hatası detayları:', errorJson.dbError);
+            errorMessage += ` - Veritabanı hatası: ${errorJson.dbError}`;
+          }
+        } catch (jsonError) {
+          // JSON parse hatası
+          console.error('Hata yanıtı JSON olarak ayrıştırılamadı:', jsonError);
+          errorMessage += ` - ${errorData}`;
+        }
+      } catch (textError) {
+        console.error('API hata içeriği okunamadı:', textError);
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    // Yanıt içeriğini al
+    const responseText = await response.text();
+    console.log('API ham yanıt:', responseText.length > 500 ? 
+               responseText.substring(0, 500) + '...' : responseText);
     
-    if (result.success) {
-      return result.item;
+    // Boş yanıt kontrolü
+    if (!responseText || responseText.trim() === '') {
+      throw new Error('API boş yanıt döndürdü');
     }
     
-    return null;
+    // JSON ayrıştırma
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (jsonError) {
+      console.error('API yanıtı geçerli JSON değil:', jsonError);
+      throw new Error('API yanıtı geçerli JSON formatında değil');
+    }
+    
+    console.log('API yanıtı işlendi:', result);
+    
+    // Başarı durumunu kontrol et
+    if (!result || typeof result !== 'object') {
+      throw new Error('API geçersiz yanıt formatı döndürdü');
+    }
+    
+    if (!result.success) {
+      const errorMsg = result.message || 'API işlemi başarısız oldu';
+      const errorDetail = result.error ? ` (${result.error})` : '';
+      throw new Error(`${errorMsg}${errorDetail}`);
+    }
+    
+    // Veri kontrolü
+    if (!result.data) {
+      throw new Error('API yanıtında data objesi eksik');
+    }
+    
+    console.log('Slider başarıyla eklendi:', result.data);
+    return result.data;
   } catch (error) {
     console.error('Slider ekleme hatası:', error);
     throw error;

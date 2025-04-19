@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { v4 as uuidv4 } from 'uuid';
+import { PRIMARY_DOMAIN, ALLOWED_DOMAINS } from './constants';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -37,20 +38,67 @@ export function generateUUID(): string {
   */
 }
 
-// Baz URL alma fonksiyonu 
-export const getBaseUrl = (): string => {
+/**
+ * Mevcut ortama göre temel URL'yi belirler
+ * - Tarayıcı: window.location.origin
+ * - Sunucu & Development: http://localhost:3000
+ * - Sunucu & Production: PRIMARY_DOMAIN ('https://dogahoteloludeniz.com')
+ */
+export function getBaseUrl(): string {
+  // Tarayıcı ortamındayız
   if (typeof window !== 'undefined') {
-    // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
-    const origin = window.location.origin;
-    console.log(`[getBaseUrl] Tarayıcı ortamı tespit edildi, origin: ${origin}`);
-    return origin;
-  } else {
-    // Sunucu tarafında çalışıyoruz
-    console.log('[getBaseUrl] Sunucu ortamı tespit edildi');
-    
-    // Vercel production ortamında sabit domain kullan
-    const productionUrl = 'https://dogahotelfethiye.vercel.app';
-    console.log(`[getBaseUrl] Production URL kullanılıyor: ${productionUrl}`);
-    return productionUrl;
+    console.log('UTILS: Tarayıcı ortamı tespit edildi, mevcut adresi kullanıyoruz:', window.location.origin);
+    return window.location.origin;
   }
-}; 
+  
+  // NODE_ENV'e göre değişecek
+  if (process.env.NODE_ENV === 'development') {
+    console.log('UTILS: Development ortamı tespit edildi, localhost kullanıyoruz');
+    return 'http://localhost:3000';
+  }
+  
+  // Vercel ortamındayız
+  if (process.env.VERCEL_URL) {
+    console.log('UTILS: Vercel ortamı tespit edildi, Vercel URL kullanıyoruz:', `https://${process.env.VERCEL_URL}`);
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // Varsayılan değeri constants.ts'den al
+  console.log('UTILS: Sunucu ortamı tespit edildi, sabit PRIMARY_DOMAIN kullanıyoruz:', PRIMARY_DOMAIN);
+  return PRIMARY_DOMAIN;
+}
+
+/**
+ * WebSocket bildirimi gönderir
+ */
+export async function sendNotification(topic: string, data: any, ignoreCache = true): Promise<boolean> {
+  try {
+    const baseUrl = getBaseUrl();
+    const timestamp = ignoreCache ? Date.now() : null;
+    const url = `${baseUrl}/api/websocket/notify${timestamp ? `?t=${timestamp}` : ''}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        topic,
+        data
+      }),
+      cache: ignoreCache ? 'no-store' : 'default'
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`WebSocket bildirimi gönderme hatası: ${response.status}`, errorText);
+      return false;
+    }
+    
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error('WebSocket bildirimi gönderme hatası:', error);
+    return false;
+  }
+} 

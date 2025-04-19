@@ -367,12 +367,15 @@ export default function EditSliderPage({ params }: EditSliderPageProps) {
               <label className="block mb-2 font-medium">Medya (Görsel veya Video)</label>
               <div className="p-4 border border-dashed border-gray-300 rounded-md bg-gray-50">
                 <MediaUploader 
-                  onUpload={handleMediaUploaded}
+                  onUpload={(result) => {
+                    console.log('MediaUploader sonucu:', result);
+                    handleMediaUploaded(result);
+                  }}
                   type="any"
                   folder="slider"
                   label="Görsel veya Video Yükle"
                   maxSizeMB={10}
-                  apiEndpoint="/api/admin/slider/upload"
+                  apiEndpoint="/api/upload"
                   initialUrl={formData.image || formData.videoUrl}
                 />
                 

@@ -1,5 +1,7 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import slugify from 'slugify';
+import { v4 as uuidv4 } from 'uuid';
 
 // Tebi.io için konfigürasyon
 // Tebi, S3, FTP/FTPS ve DataStream protokollerini destekler
@@ -266,4 +268,116 @@ function getMimeType(extension: string): string {
   };
   
   return contentTypes[extension] || 'application/octet-stream';
+}
+
+// Pre-signed URL oluşturma fonksiyonu
+export async function createPresignedUrl(params: {
+  fileName: string;
+  contentType: string;
+  path: string;
+  expiresIn?: number;
+}): Promise<{ success: boolean; uploadUrl?: string; fileKey?: string; fileUrl?: string; message?: string }> {
+  const { fileName, contentType, path, expiresIn = 600 } = params; // 10 dakika varsayılan süre
+  
+  try {
+    // Ortam değişkenlerini kontrol et
+    const apiKey = process.env.TEBI_API_KEY?.trim();
+    const masterKey = process.env.TEBI_MASTER_KEY?.trim();
+    const bucket = process.env.TEBI_BUCKET?.trim();
+    
+    console.log('Tebi Pre-signed URL: Yapılandırma kontrol ediliyor', { 
+      apiKeyExists: !!apiKey, 
+      masterKeyExists: !!masterKey, 
+      bucket,
+      apiKeyLength: apiKey?.length,
+      masterKeyLength: masterKey?.length
+    });
+    
+    if (!apiKey || !masterKey || !bucket) {
+      const missingVars = [];
+      if (!apiKey) missingVars.push('TEBI_API_KEY');
+      if (!masterKey) missingVars.push('TEBI_MASTER_KEY');
+      if (!bucket) missingVars.push('TEBI_BUCKET');
+      
+      console.error(`Tebi Pre-signed URL: Eksik ortam değişkenleri: ${missingVars.join(', ')}`);
+      return {
+        success: false,
+        message: `Depolama servisi yapılandırması eksik: ${missingVars.join(', ')} değişkenleri bulunamadı.`
+      };
+    }
+    
+    // Dosya adını temizle ve benzersiz bir isim oluştur
+    const cleanFileName = slugify(fileName, {
+      replacement: '_',
+      lower: true,
+      strict: true,
+      trim: true
+    });
+    
+    // Benzersiz bir dosya adı oluştur
+    const uniqueId = uuidv4().substring(0, 8);
+    const finalFileName = `${Date.now()}_${uniqueId}_${cleanFileName}`;
+    const fileKey = `${path}/${finalFileName}`;
+    
+    console.log('Tebi Pre-signed URL: İstemci oluşturuluyor', {
+      region: 'auto',
+      endpoint: 'https://s3.tebi.io',
+      fileKey,
+      contentType,
+      expiresIn
+    });
+    
+    try {
+      // S3 istemcisini yapılandır
+      const s3Client = new S3Client({
+        region: 'auto',
+        endpoint: 'https://s3.tebi.io',
+        credentials: {
+          accessKeyId: apiKey,
+          secretAccessKey: masterKey
+        },
+        forcePathStyle: true
+      });
+      
+      // Yükleme komutu oluştur
+      const putCommand = new PutObjectCommand({
+        Bucket: bucket,
+        Key: fileKey,
+        ContentType: contentType
+      });
+      
+      // Pre-signed URL oluştur
+      console.log('Tebi Pre-signed URL: URL oluşturuluyor...');
+      const uploadUrl = await getSignedUrl(s3Client, putCommand, { expiresIn });
+      const fileUrl = `https://${bucket}.s3.tebi.io/${fileKey}`;
+      
+      console.log('Tebi Pre-signed URL: Başarıyla oluşturuldu', {
+        fileKey,
+        urlLength: uploadUrl.length,
+        expiresIn,
+        contentType
+      });
+      
+      return {
+        success: true,
+        uploadUrl,
+        fileKey,
+        fileUrl
+      };
+    } catch (clientError) {
+      console.error('Tebi Pre-signed URL: S3 istemcisi hatası', clientError);
+      return {
+        success: false,
+        message: clientError instanceof Error 
+          ? `S3 istemcisi hatası: ${clientError.message}` 
+          : 'S3 istemcisi oluşturulurken beklenmeyen bir hata oluştu'
+      };
+    }
+  } catch (error) {
+    console.error('Tebi Pre-signed URL: Oluşturma hatası', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Pre-signed URL oluşturulurken bir hata oluştu'
+    };
+  }
 } 

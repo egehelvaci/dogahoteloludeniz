@@ -74,12 +74,8 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({
       formData.append('folder', folder);
       formData.append('type', isImage ? 'image' : 'video');
 
-      // Folder'a göre doğru API endpoint'i seç
-      let apiEndpoint = '/api/upload';
-      
-      if (folder === 'slider') {
-        apiEndpoint = '/api/admin/slider/upload';
-      }
+      // API endpoint
+      const apiEndpoint = '/api/upload';
       
       console.log(`Medya yükleniyor: ${file.name}, boyut: ${file.size}, tür: ${file.type}, API: ${apiEndpoint}, folder: ${folder}`);
 

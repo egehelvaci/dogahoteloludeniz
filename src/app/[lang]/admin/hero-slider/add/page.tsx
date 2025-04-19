@@ -11,6 +11,7 @@ import MediaUploader from '../../../../../components/ui/MediaUploader';
 import ImageKitImage from '../../../../../components/ui/ImageKitImage';
 import ImageKitVideo from '../../../../../components/ui/ImageKitVideo';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 // Corrected AddSliderPageProps interface
 interface AddSliderPageProps {
@@ -38,6 +39,8 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
     descriptionEN: '',
     active: true
   });
+
+  const { t } = useTranslation();
 
   // Medya türünü dosya uzantısına göre belirle
   const isVideoFile = (url: string): boolean => {
@@ -79,55 +82,67 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
-
-    // Validasyon
-    if (!formData.image && !formData.videoUrl) {
-      setError('Lütfen en az bir görsel veya video yükleyin');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!formData.titleTR || !formData.titleEN) {
-      setError('Lütfen Türkçe ve İngilizce başlık alanlarını doldurun');
-      setIsSubmitting(false);
-      return;
-    }
-
+    
     try {
-      // API isteği gönderilmeden önce log
-      console.log('Slider ekleme isteği gönderiliyor:', JSON.stringify(formData, null, 2));
-
-      // Boş string olan alanları undefined olarak gönder (API null olarak dönüştürecek)
-      const payload = {
-        image: formData.image || undefined,
-        videoUrl: formData.videoUrl || undefined,
-        titleTR: formData.titleTR.trim(),
-        titleEN: formData.titleEN.trim(),
-        subtitleTR: formData.subtitleTR.trim() || undefined,
-        subtitleEN: formData.subtitleEN.trim() || undefined,
-        descriptionTR: formData.descriptionTR.trim() || undefined,
-        descriptionEN: formData.descriptionEN.trim() || undefined,
-        active: formData.active
+      console.log('Slider form verileri:', formData);
+      
+      // Form doğrulama kontrolleri
+      if (!formData.titleTR?.trim() || !formData.titleEN?.trim()) {
+        throw new Error('Türkçe ve İngilizce başlık alanları zorunludur');
+      }
+      
+      if (!formData.image && !formData.videoUrl) {
+        throw new Error('Bir görsel yüklenmeli veya video URL\'si girilmelidir');
+      }
+      
+      const sliderData: Partial<SliderItem> = {
+        titleTR: formData.titleTR,
+        titleEN: formData.titleEN,
+        descriptionTR: formData.descriptionTR || '',
+        descriptionEN: formData.descriptionEN || '',
+        buttonTextTR: formData.buttonTextTR || '',
+        buttonTextEN: formData.buttonTextEN || '',
+        buttonLink: formData.buttonLink || '',
+        image: formData.image || '',
+        videoUrl: formData.videoUrl || '',
+        displayOrder: formData.displayOrder ? parseInt(formData.displayOrder) : 0,
       };
-
-      const result = await addSlider(payload);
-
-      // API yanıtını kontrol et
-      console.log('Slider ekleme API yanıtı:', result);
-
-      if (result) {
-        toast.success('Slider başarıyla eklendi');
+      
+      console.log('API\'ye gönderilecek veri:', sliderData);
+      
+      const result = await addSlider(sliderData);
+      
+      if (!result) {
+        throw new Error('Slider eklenirken bir hata oluştu, API boş yanıt döndürdü');
+      }
+      
+      console.log('Slider başarıyla eklendi:', result);
+      
+      // Bildirim gösterme ve formu sıfırlama
+      toast.success(t('sliderAddedSuccessfully') || 'Slider başarıyla eklendi');
+      reset();
+      
+      // Dashboard'a yönlendirme
+      setTimeout(() => {
         router.push(`/${lang}/admin/hero-slider`);
-      } else {
-        setError('Slider öğesi eklenirken bir hata oluştu. Lütfen tüm alanları kontrol edin.');
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Slider ekleme hatası:', error);
+      
+      let errorMessage = 'Slider eklenirken bir hata oluştu';
+      
+      // Hata tipine göre özel mesajlar
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = error.message as string;
       }
-    } catch (err: unknown) {
-      console.error('Slider ekleme hatası:', err);
-      let errorMessage = 'Bilinmeyen hata';
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      }
-      setError(`Hata: ${errorMessage}`);
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +229,7 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
                   folder="slider"
                   label="Görsel veya Video Yükle"
                   maxSizeMB={10}
-                  apiEndpoint="/api/admin/slider/upload"
+                  apiEndpoint="/api/upload"
                 />
                 
                 <p className="text-sm text-gray-500 mt-2 mb-4">
