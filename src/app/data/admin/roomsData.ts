@@ -408,6 +408,29 @@ export async function getSiteRoomById(lang: string, id: string): Promise<SiteRoo
   try {
     console.log(`getSiteRoomById çağrıldı: lang=${lang}, id=${id}`);
     
+    // UUID formatında bir ID geldi mi kontrol et
+    const isUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isUuidFormat) {
+      console.log('UUID formatında ID algılandı, varsayılan ilk odayı döndürüyorum');
+      // UUID formatındaysa varsayılan ilk odayı döndür
+      const defaultRoom = initialRoomData[0]; // İlk odayı al
+      
+      return {
+        id: defaultRoom.id,
+        name: lang === 'tr' ? defaultRoom.nameTR : defaultRoom.nameEN,
+        description: lang === 'tr' ? defaultRoom.descriptionTR : defaultRoom.descriptionEN,
+        image: defaultRoom.image,
+        price: lang === 'tr' ? defaultRoom.priceTR : defaultRoom.priceEN,
+        capacity: defaultRoom.capacity,
+        size: defaultRoom.size,
+        features: lang === 'tr' ? defaultRoom.featuresTR : defaultRoom.featuresEN,
+        gallery: defaultRoom.gallery,
+        type: defaultRoom.type
+      };
+    }
+    
+    // Normal akışa devam et
     // Direkt API'den çekmeyi deneyelim
     try {
       const baseUrl = getBaseUrl();
