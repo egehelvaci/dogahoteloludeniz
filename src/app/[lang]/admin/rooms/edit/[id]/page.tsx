@@ -162,53 +162,34 @@ export default function AdminEditRoomPage({ params }: AdminEditRoomPageProps) {
     try {
       console.log('Dosya yükleniyor:', file.name, file.type, file.size);
       
+      // Form verisi oluştur
       const formData = new FormData();
       formData.append('file', file);
-
-      // Önce admin upload API'sini dene, hata verirse genel upload API'yi kullan
-      let response;
-      try {
-        response = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          console.log('Admin API başarısız, genel API deneniyor');
-          throw new Error('Admin API başarısız');
-        }
-      } catch (err) {
-        // Alternatif API'yi dene
-        response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      formData.append('roomId', id); // Oda ID'sini ekle
+      
+      // Tebi.io'ya doğrudan yükle
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
       if (!response.ok) {
         console.error('Yükleme API yanıtı başarısız:', response.status);
-        const errorText = await response.text();
-        throw new Error(`Yükleme hatası: ${errorText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Dosya yüklenemedi');
       }
 
       const result = await response.json();
       console.log('Yükleme sonucu:', result);
 
-      if (result.success) {
-        // Yanıt formatı farklılıklarını ele al
-        const imageUrl = result.url || result.filePath || '';
-        
-        if (!imageUrl) {
-          throw new Error('Yükleme başarılı fakat resim URL bulunamadı');
-        }
-        
+      if (result.success && result.url) {
         // Yeni görseli galeri listesine ekle
-        const updatedGallery = [...roomData.gallery, imageUrl];
+        const updatedGallery = [...roomData.gallery, result.url];
         setRoomData({ 
           ...roomData, 
           gallery: updatedGallery,
           // İlk resim eklendiyse, otomatik olarak ana görsel olsun
-          image: roomData.gallery.length === 0 ? imageUrl : roomData.image
+          image: roomData.gallery.length === 0 ? result.url : roomData.image
         });
         toast.success(lang === 'tr' ? 'Görsel başarıyla yüklendi!' : 'Image uploaded successfully!');
       } else {

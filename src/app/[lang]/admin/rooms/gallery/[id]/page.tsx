@@ -58,61 +58,55 @@ export default function AdminRoomGalleryPage({ params }: AdminRoomGalleryPagePro
 
   // Dosya yükleme
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    
+    // Dosya tipi kontrolü
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(lang === 'tr' 
+        ? 'Geçersiz dosya türü. Sadece JPEG, PNG, WebP ve GIF görsel formatları desteklenir' 
+        : 'Invalid file type. Only JPEG, PNG, WebP and GIF image formats are supported');
+      return;
+    }
+    
+    // Dosya boyutu kontrolü (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(lang === 'tr' 
+        ? 'Dosya boyutu çok büyük. Maksimum dosya boyutu 10MB olabilir' 
+        : 'File size is too large. Maximum file size is 10MB');
+      return;
+    }
+    
     setIsUploading(true);
-
+    
     try {
-      console.log('Dosya yükleniyor:', file.name, file.type, file.size);
-      
+      // FormData oluştur
       const formData = new FormData();
       formData.append('file', file);
-
-      // Önce admin upload API'sini dene, hata verirse genel upload API'yi kullan
-      let response;
-      try {
-        response = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          console.log('Admin API başarısız, genel API deneniyor');
-          throw new Error('Admin API başarısız');
-        }
-      } catch (err) {
-        // Alternatif API'yi dene
-        response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-      }
-
+      formData.append('roomId', id);
+      
+      // API'ye gönder
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
       if (!response.ok) {
-        console.error('Yükleme API yanıtı başarısız:', response.status);
-        const errorText = await response.text();
-        throw new Error(`Yükleme hatası: ${errorText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed');
       }
-
+      
       const result = await response.json();
-      console.log('Yükleme sonucu:', result);
-
-      if (result.success) {
-        // Yanıt formatı farklılıklarını ele al
-        const imageUrl = result.url || result.filePath || '';
-        
-        if (!imageUrl) {
-          throw new Error('Yükleme başarılı fakat resim URL bulunamadı');
-        }
-        
+      
+      if (result.success && result.url) {
         // Dosyayı galeriye ekle
-        setGallery([...gallery, imageUrl]);
+        setGallery([...gallery, result.url]);
         
         // Eğer ana görsel yoksa bu görseli ana görsel olarak ayarla
         if (!mainImage) {
-          setMainImage(imageUrl);
+          setMainImage(result.url);
         }
         
         toast.success(lang === 'tr' ? 'Görsel başarıyla yüklendi!' : 'Image uploaded successfully!');
