@@ -72,50 +72,65 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
         next: { revalidate: 0 }
       });
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('API yanıtı:', JSON.stringify(result, null, 2));
+      console.log('API yanıt durumu:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API yanıtı başarısız: ${response.status} ${response.statusText}`);
+        console.error('API hata detayı:', errorText);
+        throw new Error(`API yanıtı başarısız: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('API yanıtı:', JSON.stringify(result, null, 2));
+      
+      if (result.success && result.data) {
+        console.log('API\'den doğrudan oda verisi alındı:', result.data.id);
+        console.log('Oda verileri (API):', {
+          id: result.data.id,
+          nameTR: result.data.nameTR, 
+          nameEN: result.data.nameEN,
+          image: result.data.mainImageUrl || result.data.image,
+          gallery: result.data.gallery || [],
+          featuresTR: result.data.featuresTR || [],
+          featuresEN: result.data.featuresEN || []
+        });
         
-        if (result.success && result.data) {
-          console.log('API\'den doğrudan oda verisi alındı:', result.data.id);
-          console.log('Oda verileri (API):', {
-            id: result.data.id,
-            nameTR: result.data.nameTR, 
-            nameEN: result.data.nameEN,
-            image: result.data.mainImageUrl || result.data.image,
-            gallery: result.data.gallery || [],
-            featuresTR: result.data.featuresTR || [],
-            featuresEN: result.data.featuresEN || []
-          });
+        // Feature alanları kontrolü
+        const features = lang === 'tr' 
+          ? (result.data.featuresTR || []) 
+          : (result.data.featuresEN || []);
           
-          // Feature alanları kontrolü
-          const features = lang === 'tr' 
-            ? (result.data.featuresTR || []) 
-            : (result.data.featuresEN || []);
-            
-          console.log('Özellikler:', features);
-          
-          // Oda nesnesini oluştur
-          const roomData = {
-            id: result.data.id,
-            name: lang === 'tr' ? result.data.nameTR : result.data.nameEN,
-            description: lang === 'tr' ? result.data.descriptionTR : result.data.descriptionEN,
-            image: result.data.mainImageUrl || result.data.image,
-            price: lang === 'tr' ? result.data.priceTR : result.data.priceEN,
-            capacity: result.data.capacity,
-            size: result.data.size,
-            features: features,
-            gallery: result.data.gallery || []
-          };
-          
-          console.log('Oluşturulan oda nesnesi:', roomData);
-          return roomData;
-        } else {
-          console.error('API yanıtı başarısız veya veri yok:', result);
+        console.log('Özellikler:', features);
+        
+        // Oda nesnesini oluştur
+        const roomData = {
+          id: result.data.id,
+          name: lang === 'tr' ? result.data.nameTR : result.data.nameEN,
+          description: lang === 'tr' ? result.data.descriptionTR : result.data.descriptionEN,
+          image: result.data.mainImageUrl || result.data.image,
+          price: lang === 'tr' ? result.data.priceTR : result.data.priceEN,
+          capacity: result.data.capacity,
+          size: result.data.size,
+          features: features,
+          gallery: result.data.gallery || []
+        };
+        
+        console.log('Oluşturulan oda nesnesi:', roomData);
+        return roomData;
+      } else {
+        console.error('API yanıtı başarısız veya veri yok:', result);
+        console.error('API yanıt yapısı:', Object.keys(result));
+        if (result.message) {
+          console.error('API hata mesajı:', result.message);
         }
+        throw new Error('API yanıtı başarısız veya veri yok');
       }
     } catch (apiError) {
       console.error('API üzerinden oda arama hatası:', apiError);
+      console.error('Hata detayları:', apiError.message);
+      console.error('Tam hata:', JSON.stringify(apiError));
+      // API hatası durumunda alternatif yönteme devam et
     }
     
     // admin/roomsData'dan getSiteRoomById kullan
@@ -152,6 +167,10 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
     return staticRoom;
   } catch (error) {
     console.error('Oda arama hatası:', error);
+    console.error('Hata türü:', typeof error);
+    console.error('Hata mesajı:', error.message);
+    console.error('Hata stack:', error.stack);
+    
     // Hata durumunda yine sabit verilere dönelim
     const rooms = lang === 'tr' ? roomsTR : roomsEN;
     return rooms.find(room => room.id.toLowerCase() === id.toLowerCase());
