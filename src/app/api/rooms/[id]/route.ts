@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated } from '../../websocket/route';
 import { generateUUID } from '../../../../lib/utils';
+import { connection } from 'next/server';
 
 // Prisma istemcisi oluştur
 const prisma = new PrismaClient();
@@ -12,12 +13,15 @@ export const fetchCache = 'force-no-store';
 
 // GET - Belirli bir odayı ID'ye göre getir
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  console.log('[API] Oda detay çağrısı:', params.id);
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini bekleyerek güvenli bir şekilde kullan
+  const { id } = params;
+  
+  console.log('[API] Oda detay çağrısı:', id);
   
   try {
-    // ID'yi al
-    const id = params.id;
-    
     if (!id) {
       return NextResponse.json(
         { success: false, message: 'Geçersiz oda ID\'si' },
@@ -119,8 +123,13 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
     const body = await request.json();
     
     console.log('API PUT - Gelen veri:', JSON.stringify(body, null, 2));
@@ -257,9 +266,13 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
-    
     // Transaction kullanarak silme
     await prisma.$transaction(async (tx) => {
       // Odanın var olup olmadığını kontrol et

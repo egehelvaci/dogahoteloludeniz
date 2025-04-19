@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated, notifyGalleryUpdated } from '../../../websocket/route';
 import { generateUUID } from '../../../../../lib/utils';
+import { connection } from 'next/server';
 
 // Prisma istemcisi oluşturalım
 const prisma = new PrismaClient();
@@ -19,9 +20,13 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
-    
     // Odayı veritabanından getir
     const room = await prisma.room.findUnique({
       where: { id },
@@ -64,8 +69,13 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
     const body = await request.json();
     console.log('Gelen galeri verileri:', JSON.stringify(body, null, 2));
     
@@ -175,8 +185,13 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
     const body = await request.json();
     const { imagePath } = body;
     
@@ -254,8 +269,13 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
+  await connection();
+  
+  // Params değerlerini güvenli bir şekilde kullan
+  const { id } = params;
+  
   try {
-    const id = params.id;
     const url = new URL(request.url);
     const imagePath = url.searchParams.get('imagePath');
     
