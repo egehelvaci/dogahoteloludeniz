@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { notifyRoomsUpdated } from '../../websocket/route';
 import { generateUUID } from '../../../../lib/utils';
-import { connection } from '@/lib/db';
-import { executeQuery } from '@/lib/db';
+import { getPool, executeQuery } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
 // Prisma istemcisi oluştur
@@ -20,8 +19,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Next.js 15 uyumluluğu için connection çağrısı
-    await connection();
+    // Veritabanı bağlantısını başlat
+    getPool();
 
     // URL'den dil parametresini al
     const url = new URL(request.url);
@@ -149,8 +148,8 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
-  await connection();
+  // Veritabanı bağlantısını başlat
+  getPool();
   
   // Next.js 15 uyumluluğu için params'ı await etmeliyiz
   const resolvedParams = await params;
@@ -295,8 +294,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
-  await connection();
+  // Veritabanı bağlantısını başlat
+  getPool();
   
   // Next.js 15 uyumluluğu için params'ı await etmeliyiz
   const resolvedParams = await params;

@@ -6,7 +6,13 @@ import Link from 'next/link';
 import { FaArrowLeft, FaSave, FaTrashAlt } from 'react-icons/fa';
 import { BiLoader } from 'react-icons/bi';
 import AdminHeader from '../../../../../components/admin/AdminHeader';
-import { getSliderById, updateSlider, deleteSlider } from '../../../../../data/admin/sliderData';
+import { 
+  getSliderById, 
+  updateSlider, 
+  deleteSlider, 
+  getAllSliderData, 
+  SliderItem 
+} from '../../../../../data/admin/sliderData';
 import MediaUploader from '../../../../../../components/ui/MediaUploader';
 import ImageKitImage from '../../../../../../components/ui/ImageKitImage';
 import ImageKitVideo from '../../../../../../components/ui/ImageKitVideo';
@@ -201,7 +207,7 @@ export default function EditSliderPage({ params }: EditSliderPageProps) {
           return;
         }
         
-        const result = await updateSliderItem(id, changedFields);
+        const result = await updateSlider(id, changedFields);
         console.log('Slider güncelleme başarılı, sonuç:', result);
         
         if (result) {
@@ -211,7 +217,7 @@ export default function EditSliderPage({ params }: EditSliderPageProps) {
         }
       } else {
         // sliderItem null ise tüm alanları gönder
-        const result = await updateSliderItem(id, updateData);
+        const result = await updateSlider(id, updateData);
         
         if (result) {
           console.log('Slider güncelleme başarılı, sonuç:', result);
@@ -254,7 +260,7 @@ export default function EditSliderPage({ params }: EditSliderPageProps) {
     setIsSubmitting(true);
     
     try {
-      const success = await deleteSliderItem(id);
+      const success = await deleteSlider(id);
       
       if (success) {
         router.push(`/${lang}/admin/hero-slider`);

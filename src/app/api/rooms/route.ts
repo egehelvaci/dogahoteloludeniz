@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/db';
+import { executeQuery, getPool } from '@/lib/db';
 import { notifyRoomsUpdated } from '../websocket/route';
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '../../../lib/db';
@@ -42,8 +42,8 @@ export const runtime = 'nodejs';
 
 // Cache kullanılmamasını zorla
 export async function GET(request: Request) {
-  // Next.js 15 uyumluluğu için connection() çağırarak dinamik içerik işlemini başlat
-  await connection();
+  // Veritabanı havuzunu başlat
+  getPool();
 
   // URL'den dil parametresini al
   const url = new URL(request.url);

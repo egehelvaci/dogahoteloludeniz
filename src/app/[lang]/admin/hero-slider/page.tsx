@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { FaEdit, FaTrashAlt, FaEye, FaPlus, FaGripVertical, FaArrowUp, FaArrowDown, FaSave, FaArrowLeft, FaGripLines, FaImage, FaVideo, FaTimes } from 'react-icons/fa';
 import { BiLoader } from 'react-icons/bi';
 import { toast } from 'react-hot-toast';
-import { getAllSliderData, deleteSliderItem, reorderSliderItems, SliderItem } from '../../../data/admin/sliderData';
+import { getAllSliderData, deleteSlider, reorderSliderItems, SliderItem } from '../../../data/admin/sliderData';
 import ImageKitImage from '../../../../components/ui/ImageKitImage';
 import ImageKitVideo from '../../../../components/ui/ImageKitVideo';
 import Modal from '../../../../components/ui/Modal';
@@ -62,7 +62,7 @@ export default function HeroSliderPage({ params }: HeroSliderPageProps) {
     
     setIsDeleting(true);
     try {
-      const success = await deleteSliderItem(itemToDelete);
+      const success = await deleteSlider(itemToDelete);
       if (success) {
         setShowDeleteModal(false);
         setSuccess('Slider öğesi başarıyla silindi');
