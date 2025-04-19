@@ -11,7 +11,22 @@ import MediaUploader from '../../../../../components/ui/MediaUploader';
 import ImageKitImage from '../../../../../components/ui/ImageKitImage';
 import ImageKitVideo from '../../../../../components/ui/ImageKitVideo';
 import { toast } from 'react-hot-toast';
-import { useTranslation } from 'react-i18next';
+
+// SliderItem arayüzü ekle
+interface SliderItem {
+  id?: string;
+  titleTR: string;
+  titleEN: string;
+  descriptionTR?: string;
+  descriptionEN?: string;
+  buttonTextTR?: string;
+  buttonTextEN?: string;
+  buttonLink?: string;
+  image?: string;
+  videoUrl?: string;
+  displayOrder?: number;
+  active?: boolean;
+}
 
 // Corrected AddSliderPageProps interface
 interface AddSliderPageProps {
@@ -37,10 +52,17 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
     subtitleEN: '',
     descriptionTR: '',
     descriptionEN: '',
+    buttonTextTR: '',
+    buttonTextEN: '',
+    buttonLink: '',
+    displayOrder: '',
     active: true
   });
 
-  const { t } = useTranslation();
+  // useTranslation'ı kaldırıyorum ve yerine sabit değerleri koyuyorum
+  const translations = {
+    sliderAddedSuccessfully: 'Slider başarıyla eklendi'
+  };
 
   // Medya türünü dosya uzantısına göre belirle
   const isVideoFile = (url: string): boolean => {
@@ -119,7 +141,7 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
       console.log('Slider başarıyla eklendi:', result);
       
       // Bildirim gösterme ve formu sıfırlama
-      toast.success(t('sliderAddedSuccessfully') || 'Slider başarıyla eklendi');
+      toast.success(translations.sliderAddedSuccessfully);
       reset();
       
       // Dashboard'a yönlendirme
@@ -192,6 +214,25 @@ export default function AddSliderPage({ params }: AddSliderPageProps) {
       console.error('Medya state güncelleme hatası:', err);
       setError('Medya bilgisi formda güncellenirken hata oluştu.');
     }
+  };
+
+  // Form sıfırlama fonksiyonu (eksik olduğu için ekliyorum)
+  const reset = () => {
+    setFormData({
+      image: '',
+      videoUrl: '',
+      titleTR: '',
+      titleEN: '',
+      subtitleTR: '',
+      subtitleEN: '',
+      descriptionTR: '',
+      descriptionEN: '',
+      buttonTextTR: '',
+      buttonTextEN: '',
+      buttonLink: '',
+      displayOrder: '',
+      active: true
+    });
   };
 
   return (
