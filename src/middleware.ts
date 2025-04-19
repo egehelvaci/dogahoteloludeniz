@@ -74,10 +74,10 @@ export async function middleware(request: NextRequest) {
 // Middleware'in hangi rotalarda çalışacağını belirle
 export const config = {
   matcher: [
-    // Admin sayfaları için
+    // Admin sayfaları için - daha spesifik eşleşme için
     '/admin/:path*',
     '/:lang/admin/:path*',
-    // Admin API rotaları için (auth hariç - zaten üstte kontrol ediyoruz) 
+    // Sadece admin API rotaları için - daha spesifik eşleşme için
     '/api/admin/:path*'
   ],
-}; 
+};

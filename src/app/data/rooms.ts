@@ -28,14 +28,15 @@ export async function getRoomsForLanguage(lang: string): Promise<any[]> {
   console.log(`[getRoomsForLanguage] API isteği yapılıyor: ${url}`);
 
   try {
-    // Fetch options ile cache kontrolü
+    // Fetch options ile cache kontrolü ve auth bypass
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        'x-skip-auth': 'true' // Vercel authentication'ı bypass etmek için
       },
       next: { revalidate: 0 }, // Önbelleği devre dışı bırak
     });
@@ -137,7 +138,8 @@ export async function getRoomById(lang: string, id: string): Promise<Room | unde
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'x-skip-auth': 'true' // Vercel authentication'ı bypass etmek için
         },
         cache: 'no-store',
         next: { revalidate: 0 }

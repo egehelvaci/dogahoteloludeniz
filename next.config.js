@@ -48,7 +48,23 @@ const nextConfig = {
           source: '/',
           destination: '/tr',
         },
-        // API isteklerini koru
+        // Public API isteklerini özellikle koru
+        {
+          source: '/api/rooms/:path*',
+          destination: '/api/rooms/:path*',
+          has: [
+            {
+              type: 'header',
+              key: 'x-skip-auth',
+              value: '(?<skipAuth>.*)'
+            }
+          ]
+        },
+        {
+          source: '/api/rooms',
+          destination: '/api/rooms',
+        },
+        // Diğer API isteklerini koru
         {
           source: '/api/:path*',
           destination: '/api/:path*',
@@ -73,4 +89,4 @@ const nextConfig = {
   }
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig
