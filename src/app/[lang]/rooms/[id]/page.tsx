@@ -36,7 +36,7 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
   if (!room) {
     return (
       <div className="pt-24 pb-16 min-h-screen flex flex-col items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-4xl mx-auto px-4">
           <h1 className="text-3xl font-bold text-gray-800 mb-4">
             {lang === 'tr' ? 'Oda Bulunamadı' : 'Room Not Found'}
           </h1>
@@ -45,16 +45,24 @@ export default async function RoomDetailPage({ params }: RoomDetailPageProps) {
               ? 'Aradığınız oda bulunamadı veya kaldırılmış olabilir.' 
               : 'The room you are looking for could not be found or may have been removed.'}
           </p>
-          <p className="text-gray-500 mb-4">
-            {lang === 'tr' 
-              ? `Aranan ID: ${id}` 
-              : `Requested ID: ${id}`}
-          </p>
-          <p className="text-gray-500 mb-4">
-            {lang === 'tr' 
-              ? `Mevcut Odalar: ${allRooms.map(r => r.id).join(', ')}` 
-              : `Available Rooms: ${allRooms.map(r => r.id).join(', ')}`}
-          </p>
+          <div className="bg-gray-100 p-5 rounded-lg mb-8 overflow-auto text-left">
+            <p className="text-gray-700 mb-2 font-semibold">Hata ayıklama bilgileri:</p>
+            <p className="text-gray-700">
+              {lang === 'tr' 
+                ? `ID: ${id}` 
+                : `ID: ${id}`}
+            </p>
+            <p className="text-gray-700">
+              {lang === 'tr' 
+                ? `URL: ${typeof window !== 'undefined' ? window.location.href : ''}` 
+                : `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`}
+            </p>
+            <p className="text-gray-700">
+              {lang === 'tr' 
+                ? `Mevcut Odalar: ${allRooms.map(r => `${r.id} (${r.name})`).join(', ')}` 
+                : `Available Rooms: ${allRooms.map(r => `${r.id} (${r.name})`).join(', ')}`}
+            </p>
+          </div>
           <Link 
             href={`/${lang}/rooms`}
             className="inline-flex items-center bg-teal-600 hover:bg-teal-700 text-white py-2 px-5 rounded transition-colors duration-300"
