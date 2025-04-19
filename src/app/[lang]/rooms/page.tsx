@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { FaBed, FaRulerCombined, FaUsers, FaArrowRight, FaChevronLeft, FaChevronRight, FaCoffee, FaWifi, FaWind, FaTv, FaSearch, FaFilter } from 'react-icons/fa';
 import { getRoomsForLanguage } from '../../data/rooms';
 import { mapRoomId } from '../../data/idMapper';
-import { getBaseUrl } from '../../lib/utils';
+import { getBaseUrl } from '@/lib/utils';
 
 interface RoomsPageProps {
   params: {

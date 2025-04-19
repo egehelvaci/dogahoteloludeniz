@@ -12,8 +12,8 @@ interface Room {
 }
 
 // Admin panelindeki oda verileri ile senkronize olacak fonksiyonlar
-import { getRoomsData, getSiteRoomById } from './admin/roomsData'; // Added getSiteRoomById
-import { getBaseUrl } from '../../lib/utils'; // Merkezi getBaseUrl fonksiyonunu import et
+import { getRoomsData, getSiteRoomById, RoomItem } from './admin/roomsData'; // Added getSiteRoomById
+import { getBaseUrl } from '@/lib/utils'; // Merkezi getBaseUrl fonksiyonunu import et
 
 // Sabit veriler - sadece fallback olarak kullanılacak (Next.js 15 uyumluluğu için gerekli)
 const roomsTR: Room[] = [];
