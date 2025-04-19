@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/rooms(.*)",
+      "dest": "/api/rooms$1",
+      "continue": true
+    },
+    {
+      "src": "/api/gallery(.*)",
+      "dest": "/api/gallery$1",
+      "continue": true
+    },
+    {
+      "src": "/api/services(.*)",
+      "dest": "/api/services$1",
+      "continue": true
+    },
+    {
+      "src": "/api/hero-slider(.*)",
+      "dest": "/api/hero-slider$1",
+      "continue": true
+    },
+    {
+      "src": "/api/about(.*)",
+      "dest": "/api/about$1",
+      "continue": true
+    },
+    {
+      "src": "/api/admin/(.*)",
+      "dest": "/api/admin/$1",
+      "continue": true
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/admin/$1",
+      "continue": true
+    },
+    {
+      "src": "/(.*)/admin/(.*)",
+      "dest": "/$1/admin/$2",
+      "continue": true
+    }
+  ]
+}

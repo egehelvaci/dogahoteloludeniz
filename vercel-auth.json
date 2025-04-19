@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "public": true,
+  "regions": ["fra1"],
+  "github": {
+    "silent": true
+  },
+  "rewrites": [
+    { "source": "/api/rooms/:path*", "destination": "/api/rooms/:path*" },
+    { "source": "/api/gallery/:path*", "destination": "/api/gallery/:path*" },
+    { "source": "/api/services/:path*", "destination": "/api/services/:path*" },
+    { "source": "/api/hero-slider/:path*", "destination": "/api/hero-slider/:path*" },
+    { "source": "/api/about/:path*", "destination": "/api/about/:path*" },
+    { "source": "/api/slider/:path*", "destination": "/api/slider/:path*" }
+  ]
+}

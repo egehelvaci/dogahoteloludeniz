@@ -1,0 +1,27 @@
+# Ignore node_modules
+node_modules
+
+# Ignore build output
+.next
+out
+
+# Ignore development files
+.git
+.github
+.vscode
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Don't apply authentication to these API routes
+/api/rooms
+/api/rooms/*
+/api/gallery
+/api/gallery/*
+/api/services
+/api/services/*
+/api/hero-slider
+/api/hero-slider/*
+/api/about
+/api/about/*
