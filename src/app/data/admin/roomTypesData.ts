@@ -8,15 +8,33 @@ export interface RoomType {
   updatedAt: string;
 }
 
+// Baz URL alma fonksiyonu
+const getBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // Tarayıcı ortamındayız, window.location.origin kullanabiliriz
+    return window.location.origin;
+  } else {
+    // Sunucu tarafında çalışıyoruz, çevre değişkenlerini kontrol edelim
+    if (process.env.VERCEL_URL) {
+      // Vercel ortamında çalışıyoruz
+      return `https://${process.env.VERCEL_URL}`;
+    } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+      // Özel olarak tanımlanmış site URL'si varsa kullanalım
+      return process.env.NEXT_PUBLIC_SITE_URL;
+    } else {
+      // Hala development ortamındayız
+      return 'http://localhost:3000';
+    }
+  }
+};
+
 // Temel URL'ler
 const API_URL = '/api/admin/room-types';
 
 // Tüm oda tiplerini getir
 export async function getAllRoomTypes(): Promise<RoomType[]> {
   try {
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}${API_URL}`, {
       method: 'GET',
@@ -47,9 +65,7 @@ export async function getAllRoomTypes(): Promise<RoomType[]> {
 // ID'ye göre oda tipi getir
 export async function getRoomTypeById(id: string): Promise<RoomType | null> {
   try {
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}${API_URL}/${id}`, {
       method: 'GET',
@@ -80,9 +96,7 @@ export async function getRoomTypeById(id: string): Promise<RoomType | null> {
 // Yeni oda tipi ekle
 export async function addRoomType(roomType: Omit<RoomType, 'id' | 'createdAt' | 'updatedAt'>): Promise<RoomType | null> {
   try {
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}${API_URL}`, {
       method: 'POST',
@@ -113,9 +127,7 @@ export async function addRoomType(roomType: Omit<RoomType, 'id' | 'createdAt' | 
 // Oda tipini güncelle
 export async function updateRoomType(id: string, roomType: Partial<RoomType>): Promise<RoomType | null> {
   try {
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}${API_URL}/${id}`, {
       method: 'PUT',
@@ -146,9 +158,7 @@ export async function updateRoomType(id: string, roomType: Partial<RoomType>): P
 // Oda tipini sil
 export async function deleteRoomType(id: string): Promise<boolean> {
   try {
-    const baseUrl = typeof window !== 'undefined'
-      ? window.location.origin
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     
     const response = await fetch(`${baseUrl}${API_URL}/${id}`, {
       method: 'DELETE',
