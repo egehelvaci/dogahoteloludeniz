@@ -14,7 +14,9 @@ interface Room {
 // Admin panelindeki oda verileri ile senkronize olacak fonksiyonlar
 import { getRoomsData, getSiteRoomById } from './admin/roomsData'; // Added getSiteRoomById
 
-
+// Sabit veriler - sadece fallback olarak kullanılacak (Next.js 15 uyumluluğu için gerekli)
+const roomsTR: Room[] = [];
+const roomsEN: Room[] = [];
 
 // Dile göre oda verilerini getiren fonksiyon - admin verilerinden çeker
 export async function getRoomsForLanguage(lang: string): Promise<Room[]> {
