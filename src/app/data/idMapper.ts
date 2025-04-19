@@ -17,6 +17,7 @@ export const roomIdMap: IdMap = {
   
   // Vercel'den gelen UUID hataları için eklenebilir
   '08a00bb0-48fa-4cfc-90e6-f08a53797154': '43c7e499-ba30-40a9-a010-79902cd38558', // Muhtemelen Standart Oda için
+  '3b787da0-0016-48d1-837f-648e73981817': '43c7e499-ba30-40a9-a010-79902cd38558', // Yeni eklenen hatalı UUID, Standart Oda'ya yönlendir
   
   // Vercel'de test için, kendi ID'sine de eşleyelim ki garantili olsun
   '43c7e499-ba30-40a9-a010-79902cd38558': '43c7e499-ba30-40a9-a010-79902cd38558', // Standart Oda
@@ -40,6 +41,15 @@ export const reverseRoomIdMap: IdMap = Object.entries(roomIdMap).reduce((acc, [k
  * @returns Eşleşen doğru ID veya orijinal ID
  */
 export function mapRoomId(id: string): string {
+  // ID null veya undefined ise orijinal değeri döndür
+  if (!id) return id;
+  
+  // Görsel veya statik dosya olabilecek ID'leri filtrele
+  if (id.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js)$/i)) {
+    console.error(`[idMapper] Dosya uzantılı geçersiz ID algılandı: ${id}`);
+    return id; // Dosya uzantılı bir ID döndür, böylece sonraki kontroller bunu reddedebilir
+  }
+  
   console.log(`[idMapper] Eşleme yapılıyor: ${id} => ${roomIdMap[id] || id}`);
   return roomIdMap[id] || id;
 }
